@@ -9,7 +9,18 @@ authors: [AJARETRO]
 description: Automatically detects and throttles chunk-based lag machines.
 website: ajaretro.dev
 
+
+commands:
+  circuitbreaker:
+    description: Main command for CircuitBreaker admin controls.
+    aliases: [cb]
+    permission: circuitbreaker.admin # <-- New permission!
+    usage: /<command> [unfreeze | ignore | unignore | status]
+
 permissions:
   antilag.notify:
     description: Receives alerts when CircuitBreaker freezes a laggy chunk.
+    default: op
+  circuitbreaker.admin: # <-- New!
+    description: Allows use of the /circuitbreaker command.
     default: op

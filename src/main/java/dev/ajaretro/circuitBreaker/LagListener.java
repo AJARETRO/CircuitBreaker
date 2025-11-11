@@ -24,26 +24,32 @@ public class LagListener implements Listener {
     }
     // --- END NEW ---
 
+
     @EventHandler
     public void onBlockPhysics(BlockPhysicsEvent event) {
         Chunk chunk = event.getBlock().getChunk();
 
-        // --- NEW: THE FREEZE CHECK! ---
-        // This is the "Hard Freeze" in action.
-        // We get the manager from the plugin and check if the chunk is frozen.
-        if (plugin.getLagManager().isFrozen(chunk)) {
+        // --- UPDATED CHECK ---
+        LagManager manager = plugin.getLagManager();
+        if (manager.isFrozen(chunk)) {
             event.setCancelled(true); // Stop the event
             return; // Don't count it
         }
-        // --- END NEW ---
+        if (manager.isIgnored(chunk)) {
+            return; // It's ignored, do nothing (don't even count it)
+        }
+        // --- END UPDATE ---
 
-        // If the chunk isn't frozen, we count the event like normal.
+        // If the chunk isn't frozen or ignored, we count the event
         eventCounter.compute(chunk, (c, count) -> (count == null) ? 1 : count + 1);
     }
+
+
 
     public Map<Chunk, Integer> getAndResetCounts() {
         Map<Chunk, Integer> countsSnapshot = new ConcurrentHashMap<>(eventCounter);
         eventCounter.clear();
         return countsSnapshot;
     }
+
 }
