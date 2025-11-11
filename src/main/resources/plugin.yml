@@ -1,8 +1,15 @@
+# src/main/resources/plugin.yml
+
 name: CircuitBreaker
 version: '1.0-SNAPSHOT'
-main: dev.ajaretro.circuitBreaker.CircuitBreaker
+main: dev.ajaretro.circuitBreaker.CircuitBreaker # <-- Corrected to camelCase
 api-version: '1.21'
-prefix: &l[ &4AJA_RETRO/&3BedrockTotem&f ]
-  authors: [ AJA RETRO ]
-  description: BedRock Players from floodgate gets saved when they are about to die and have a totem in any place of their inventory
-  website: ajaretro.dev
+prefix: '[CircuitBreaker]'
+authors: [AJARETRO]
+description: Automatically detects and throttles chunk-based lag machines.
+website: ajaretro.dev
+
+permissions:
+  antilag.notify:
+    description: Receives alerts when CircuitBreaker freezes a laggy chunk.
+    default: op

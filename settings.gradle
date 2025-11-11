@@ -1,1 +1,3 @@
-rootProject.name = 'untitled'
+// settings.gradle
+
+rootProject.name = 'CircuitBreaker' // <-- Changed from 'untitled'
