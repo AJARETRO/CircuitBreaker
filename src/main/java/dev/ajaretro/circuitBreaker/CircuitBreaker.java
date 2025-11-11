@@ -1,9 +1,8 @@
 package dev.ajaretro.circuitBreaker;
 
+import org.bukkit.Bukkit; // We need this import!
 import org.bukkit.ChatColor;
 import org.bukkit.plugin.java.JavaPlugin;
-
-// We don't need to import the command class, it's in the same package
 
 public final class CircuitBreaker extends JavaPlugin {
 
@@ -13,88 +12,84 @@ public final class CircuitBreaker extends JavaPlugin {
     @Override
     public void onEnable() {
         // --- NEW: FOLIA CHECK ---
-        // We do this *before* anything else.
         if (isFolia()) {
-            // Log your custom message
             logFoliaWarning();
-            // Disable the plugin
             getServer().getPluginManager().disablePlugin(this);
             return; // Stop onEnable() right here
         }
         // --- END FOLIA CHECK ---
 
-        // This loads our config.yml
         saveDefaultConfig();
 
         // --- Our Sexy Startup Messages ---
+        // We are using direct ChatColor concatenation now!
         String prefix = ChatColor.DARK_RED + "[" + ChatColor.RED + "CircuitBreaker" + ChatColor.DARK_RED + "] " + ChatColor.GRAY;
 
-        getLogger().info(ChatColor.DARK_RED + "==================================================");
-        getLogger().info(prefix + "Enabling CircuitBreaker v" + getDescription().getVersion());
-        getLogger().info(prefix + "Author: " + ChatColor.AQUA + "AJARETRO");
-        getLogger().info(prefix + "Website: " + ChatColor.AQUA + "ajaretro.dev");
-        getLogger().info(prefix + "Initializing lag detection systems...");
-        // --- End Startup Messages ---
+        // --- SWITCHED TO Bukkit.getConsoleSender() ---
+        Bukkit.getConsoleSender().sendMessage(ChatColor.DARK_RED + "==================================================");
+        Bukkit.getConsoleSender().sendMessage(prefix + "Enabling CircuitBreaker v" + ChatColor.WHITE + getDescription().getVersion());
+        Bukkit.getConsoleSender().sendMessage(prefix + "Author: " + ChatColor.AQUA + "AJARETRO");
+        Bukkit.getConsoleSender().sendMessage(prefix + "Website: " + ChatColor.AQUA + getDescription().getWebsite());
+        Bukkit.getConsoleSender().sendMessage(prefix + "Initializing lag detection systems...");
 
         // 1. Create the listener
         this.lagListener = new LagListener(this);
 
         // 2. Register the listener
         getServer().getPluginManager().registerEvents(this.lagListener, this);
-        getLogger().info(prefix + "LagListener registered.");
+        Bukkit.getConsoleSender().sendMessage(prefix + "LagListener registered.");
 
         // 3. Create the manager (this starts the ticker AND loads saved data)
         this.lagManager = new LagManager(this);
-        getLogger().info(prefix + "LagManager initialized and ticker is running.");
+        // NOTE: The LagManager needs the same update for its logs!
+        Bukkit.getConsoleSender().sendMessage(prefix + "LagManager initialized and ticker is running.");
 
         // 4. Register the Admin Command
         CircuitBreakerCommand cbCommand = new CircuitBreakerCommand(this);
         getCommand("circuitbreaker").setExecutor(cbCommand);
         getCommand("circuitbreaker").setTabCompleter(cbCommand);
-        getLogger().info(prefix + "Admin command /cb registered.");
+        Bukkit.getConsoleSender().sendMessage(prefix + "Admin command /cb registered.");
 
-        getLogger().info(prefix + ChatColor.GREEN + "Successfully enabled!");
-        getLogger().info(ChatColor.DARK_RED + "==================================================");
+        Bukkit.getConsoleSender().sendMessage(prefix + ChatColor.GREEN + "Successfully enabled!");
+        Bukkit.getConsoleSender().sendMessage(ChatColor.DARK_RED + "==================================================");
     }
 
     @Override
     public void onDisable() {
         String prefix = ChatColor.DARK_RED + "[" + ChatColor.RED + "CircuitBreaker" + ChatColor.DARK_RED + "] " + ChatColor.GRAY;
 
-        getLogger().info(ChatColor.DARK_RED + "==================================================");
-        getLogger().info(prefix + "Disabling CircuitBreaker...");
-        getLogger().info(prefix + "Thank you for using the plugin!");
-        getLogger().info(prefix + "Author: " + ChatColor.AQUA + "AJARETRO");
-        getLogger().info(ChatColor.DARK_RED + "==================================================");
+        Bukkit.getConsoleSender().sendMessage(ChatColor.DARK_RED + "==================================================");
+        Bukkit.getConsoleSender().sendMessage(prefix + "Disabling CircuitBreaker...");
+        Bukkit.getConsoleSender().sendMessage(prefix + "Thank you for using the plugin!");
+        Bukkit.getConsoleSender().sendMessage(prefix + "Author: " + ChatColor.AQUA + "AJARETRO");
+        Bukkit.getConsoleSender().sendMessage(ChatColor.DARK_RED + "==================================================");
     }
 
-    // --- NEW: FOLIA CHECK METHODS ---
-    /**
-     * Checks if the server is running Folia by looking for a Folia-specific class.
-     * @return true if Folia is detected, false otherwise.
-     */
+    // --- FOLIA CHECK METHODS ---
     private boolean isFolia() {
         try {
-            // This is the standard way to check for Folia.
             Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
-            return true; // Class found, it's Folia
+            return true;
         } catch (ClassNotFoundException e) {
-            return false; // Class not found, it's Paper/Spigot
+            return false;
         }
     }
 
     /**
-     * Logs your custom Folia incompatibility message to the console.
+     * Logs your custom Folia incompatibility message to the console
+     * using the console sender for color.
      */
     private void logFoliaWarning() {
         String prefix = ChatColor.DARK_RED + "[" + ChatColor.RED + "CircuitBreaker" + ChatColor.DARK_RED + "] " + ChatColor.GRAY;
-        getLogger().severe(ChatColor.DARK_RED + "==================================================");
-        getLogger().severe(prefix + ChatColor.RED + "FOLIA DETECTED! This plugin is incompatible.");
-        getLogger().severe(prefix + ChatColor.YELLOW + "Folia's design (separate threads per region) makes");
-        getLogger().severe(prefix + ChatColor.YELLOW + "traditional lag machines nearly impossible, as they");
-        getLogger().severe(prefix + ChatColor.YELLOW + "would only break the owner's gameplay, not the server.");
-        getLogger().severe(prefix + ChatColor.RED + "CircuitBreaker will now be disabled.");
-        getLogger().severe(ChatColor.DARK_RED + "==================================================");
+
+        // --- SWITCHED TO Bukkit.getConsoleSender() ---
+        Bukkit.getConsoleSender().sendMessage(ChatColor.DARK_RED + "==================================================");
+        Bukkit.getConsoleSender().sendMessage(prefix + ChatColor.RED + "FOLIA DETECTED! This plugin is incompatible.");
+        Bukkit.getConsoleSender().sendMessage(prefix + ChatColor.YELLOW + "Folia's design (separate threads per region) makes");
+        Bukkit.getConsoleSender().sendMessage(prefix + ChatColor.YELLOW + "traditional lag machines nearly impossible, as they");
+        Bukkit.getConsoleSender().sendMessage(prefix + ChatColor.YELLOW + "would only break the owner's gameplay, not the server.");
+        Bukkit.getConsoleSender().sendMessage(prefix + ChatColor.RED + "CircuitBreaker will now be disabled.");
+        Bukkit.getConsoleSender().sendMessage(ChatColor.DARK_RED + "==================================================");
     }
     // --- END NEW METHODS ---
 

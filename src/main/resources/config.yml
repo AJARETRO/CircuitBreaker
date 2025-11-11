@@ -10,29 +10,8 @@ enabled: true
 # How many block physics events in 1 second (20 ticks)
 # will trigger a "lag" warning?
 # Default: 5000
-lag-threshold: 5000
+lag-threshold: 20000
 
-# How many "strikes" a chunk gets before it is frozen.
-# Default: 3
-strike-limit: 3
-
-# --- Action Settings ---
-# How long (in ticks) to "soft reset" a chunk for.
-# 200 ticks = 10 seconds
-soft-reset-duration-ticks: 200
-
-# How long (in ticks) to "hard freeze" a chunk for.
-# After this time, it will be automatically unfrozen.
-# 6000 ticks = 5 minutes (20 * 60 * 5)
-# Set to -1 to freeze chunks permanently (requires admin to unfreeze).
-freeze-duration-ticks: 6000
-
-# --- Alert Settings ---
-# Send a broadcast message to all players with the 'antilag.notify'
-# permission when a chunk is frozen?
-notify-admins: true
-
-# --- Strike Settings ---
 # How many "strikes" a chunk gets before it is frozen.
 # Default: 3
 strike-limit: 3
@@ -41,3 +20,21 @@ strike-limit: 3
 # This clears the *entire* strike list every X minutes.
 # Set to -1 to disable strike resetting (not recommended).
 strike-reset-minutes: 15
+
+# --- Action Settings ---
+# How long (in ticks) to "soft reset" a chunk for.
+# 200 ticks = 10 seconds
+
+soft-reset-duration-ticks: 200
+# How long (in ticks) to "hard freeze" a chunk for.
+# After this time, it will be automatically unfrozen.
+# 6000 ticks = 5 minutes (20 * 60 * 5)
+# Set to -1 to freeze chunks permanently (requires admin to unfreeze).
+
+freeze-duration-ticks: 6000
+# --- Alert Settings ---
+# Send a broadcast message to all players with the 'antilag.notify'
+# permission when a chunk is frozen?
+
+
+notify-admins: true

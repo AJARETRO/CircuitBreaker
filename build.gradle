@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'dev.ajaretro'
-version = '1.0-SNAPSHOT'
+version = '1.0'
 
 repositories {
     mavenCentral()
@@ -53,4 +53,9 @@ processResources {
     filesMatching('plugin.yml') {
         expand props
     }
+}
+jar {
+    // This removes all the extra info and names the file exactly as we want.
+    // It will output: CircuitBreaker-v1.0.0.jar (if your version is set to 1.0.0)
+    archiveFileName = "${project.name}-v${project.version.replace('-SNAPSHOT', '')}.jar"
 }

@@ -1,10 +1,10 @@
 # src/main/resources/plugin.yml
 
 name: CircuitBreaker
-version: '1.0-SNAPSHOT'
+version: '1.0'
 main: dev.ajaretro.circuitBreaker.CircuitBreaker # <-- Corrected to camelCase
 api-version: '1.21'
-prefix: '[CircuitBreaker]'
+prefix: 'CircuitBreaker'
 authors: [AJARETRO]
 description: Automatically detects and throttles chunk-based lag machines.
 website: ajaretro.dev
