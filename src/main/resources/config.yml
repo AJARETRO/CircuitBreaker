@@ -31,3 +31,13 @@ freeze-duration-ticks: 6000
 # Send a broadcast message to all players with the 'antilag.notify'
 # permission when a chunk is frozen?
 notify-admins: true
+
+# --- Strike Settings ---
+# How many "strikes" a chunk gets before it is frozen.
+# Default: 3
+strike-limit: 3
+
+# How many minutes of no lag before a chunk's strike count is reset.
+# This clears the *entire* strike list every X minutes.
+# Set to -1 to disable strike resetting (not recommended).
+strike-reset-minutes: 15

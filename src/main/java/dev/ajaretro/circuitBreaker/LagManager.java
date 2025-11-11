@@ -4,7 +4,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
 import org.bukkit.scheduler.BukkitRunnable;
-// --- NEW IMPORTS ---
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -12,7 +11,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-// --- END NEW IMPORTS ---
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,10 +20,7 @@ public class LagManager {
     private final CircuitBreaker plugin;
     private final Map<Chunk, Integer> strikeList = new ConcurrentHashMap<>();
     private final Set<Chunk> frozenChunks = ConcurrentHashMap.newKeySet();
-
-    // --- UPDATED: This is now a Set of Strings, not Chunks ---
     private final Set<String> ignoredChunks = ConcurrentHashMap.newKeySet();
-    // --- END UPDATE ---
 
     // --- Config Values ---
     private final boolean pluginEnabled;
@@ -35,10 +30,12 @@ public class LagManager {
     private final long freezeDuration;
     private final boolean notifyAdmins;
 
-    // --- NEW: For saving/loading data.yml ---
+    // --- NEW: Strike Reset Value ---
+    private final int strikeResetMinutes;
+
+    // --- Data File ---
     private FileConfiguration dataConfig = null;
     private File dataFile = null;
-    // --- END NEW ---
 
     public LagManager(CircuitBreaker plugin) {
         this.plugin = plugin;
@@ -51,41 +48,80 @@ public class LagManager {
         this.freezeDuration = plugin.getConfig().getLong("freeze-duration-ticks", 6000L);
         this.notifyAdmins = plugin.getConfig().getBoolean("notify-admins", true);
 
-        // --- NEW: Load our data.yml ---
-        loadIgnoredChunks();
+        // --- NEW: Load the reset timer ---
+        this.strikeResetMinutes = plugin.getConfig().getInt("strike-reset-minutes", 15);
         // --- END NEW ---
 
+        // Load our data.yml
+        loadIgnoredChunks();
+
+        // Start our core logic only if enabled
         if (this.pluginEnabled) {
             startTicker();
+
+            // --- NEW: Start the Strike Reset Timer ---
+            if (this.strikeResetMinutes > 0) {
+                startStrikeResetter();
+            } else {
+                plugin.getLogger().info("Strike resetting is disabled via config.");
+            }
+            // --- END NEW ---
+
         } else {
             plugin.getLogger().warning("CircuitBreaker is disabled via config.yml.");
         }
     }
 
+    /**
+     * This is our main 1-second lag check ticker.
+     */
     private void startTicker() {
         new BukkitRunnable() {
             @Override
             public void run() {
+                // ... (all the logic for checking chunks is the same) ...
                 Map<Chunk, Integer> counts = plugin.getLagListener().getAndResetCounts();
                 for (Map.Entry<Chunk, Integer> entry : counts.entrySet()) {
                     Chunk chunk = entry.getKey();
-
-                    // --- UPDATED: Check ignore list ---
-                    // This now calls our updated isIgnored() method
                     if (isIgnored(chunk)) {
                         continue;
                     }
-                    // --- END UPDATE ---
-
                     int count = entry.getValue();
                     if (count > lagThreshold) {
                         handleLaggyChunk(chunk, count);
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 20L);
+        }.runTaskTimer(plugin, 0L, 20L); // Runs every 20 ticks (1 second)
     }
 
+    // --- NEW: STRIKE RESETTER METHOD ---
+    /**
+     * Starts a new, separate timer that clears the strike list
+     * every X minutes, based on the config.
+     */
+    private void startStrikeResetter() {
+        // Convert minutes to ticks (Minutes * 60 seconds * 20 ticks)
+        long resetTicks = this.strikeResetMinutes * 60 * 20L;
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                // This is its ONLY job!
+                strikeList.clear();
+
+                plugin.getLogger().info("All chunk strikes have been reset.");
+            }
+        }.runTaskTimer(plugin, resetTicks, resetTicks); // Wait X ticks, then run every X ticks
+
+        plugin.getLogger().info("Strike resetter task started. Will clear all strikes every " + strikeResetMinutes + " minutes.");
+    }
+    // --- END NEW ---
+
+    // ... (All other methods like handleLaggyChunk, performSoftReset, etc... are exactly the same) ...
+    // ... (All data saving/loading methods are also the same) ...
+
+    // (Rest of your LagManager.java file...)
     private void handleLaggyChunk(Chunk chunk, int count) {
         if (isFrozen(chunk)) {
             return;
@@ -145,22 +181,15 @@ public class LagManager {
         Bukkit.broadcast(message, "antilag.notify");
     }
 
-    // --- CHUNK STATUS METHODS (Updated) ---
+    private String getChunkIdentifier(Chunk chunk) {
+        return chunk.getWorld().getUID().toString() + ":" + chunk.getX() + ":" + chunk.getZ();
+    }
 
     public boolean isFrozen(Chunk chunk) {
         return frozenChunks.contains(chunk);
     }
 
-    /**
-     * Gets a unique string ID for a chunk.
-     * @return String in "world_uuid:x:z" format
-     */
-    private String getChunkIdentifier(Chunk chunk) {
-        return chunk.getWorld().getUID().toString() + ":" + chunk.getX() + ":" + chunk.getZ();
-    }
-
     public boolean isIgnored(Chunk chunk) {
-        // Now checks our Set<String>
         return ignoredChunks.contains(getChunkIdentifier(chunk));
     }
 
@@ -168,7 +197,7 @@ public class LagManager {
         if (isFrozen(chunk)) {
             return ChatColor.RED + "FROZEN";
         }
-        if (isIgnored(chunk)) { // Uses our new method
+        if (isIgnored(chunk)) {
             return ChatColor.GRAY + "IGNORED (Persistent)";
         }
         if (strikeList.containsKey(chunk)) {
@@ -183,11 +212,10 @@ public class LagManager {
     }
 
     public boolean addChunkToIgnoreList(Chunk chunk) {
-        manuallyUnfreezeChunk(chunk); // Also unfreeze it
-
+        manuallyUnfreezeChunk(chunk);
         boolean added = ignoredChunks.add(getChunkIdentifier(chunk));
         if (added) {
-            saveIgnoredChunks(); // Save to file!
+            saveIgnoredChunks();
         }
         return added;
     }
@@ -195,46 +223,32 @@ public class LagManager {
     public boolean removeChunkFromIgnoreList(Chunk chunk) {
         boolean removed = ignoredChunks.remove(getChunkIdentifier(chunk));
         if (removed) {
-            saveIgnoredChunks(); // Save to file!
+            saveIgnoredChunks();
         }
         return removed;
     }
 
-    // --- NEW: DATA SAVING/LOADING METHODS ---
-
-    /**
-     * Loads the list of ignored chunks from data.yml.
-     */
     public void loadIgnoredChunks() {
         if (dataFile == null) {
-            // Get the plugin's data folder and create a "data.yml" file
             dataFile = new File(plugin.getDataFolder(), "data.yml");
         }
         if (!dataFile.exists()) {
-            plugin.saveResource("data.yml", false); // Create it if it doesn't exist
+            plugin.saveResource("data.yml", false);
         }
         dataConfig = YamlConfiguration.loadConfiguration(dataFile);
-
-        // Get the list of strings from the file
         List<String> ignoredList = dataConfig.getStringList("ignored-chunks");
         ignoredChunks.clear();
         ignoredChunks.addAll(ignoredList);
-
         plugin.getLogger().info("Loaded " + ignoredChunks.size() + " ignored chunks from data.yml.");
     }
 
-    /**
-     * Saves the current list of ignored chunks to data.yml.
-     */
     public void saveIgnoredChunks() {
         if (dataConfig == null || dataFile == null) {
-            // Just in case, this should already be set
             loadIgnoredChunks();
         }
         try {
-            // Save the Set as a new ArrayList
             dataConfig.set("ignored-chunks", new ArrayList<>(ignoredChunks));
-            dataConfig.save(dataFile); // Save the file
+            dataConfig.save(dataFile);
         } catch (IOException e) {
             plugin.getLogger().severe("Could not save ignored chunks to data.yml!");
             e.printStackTrace();
