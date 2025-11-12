@@ -10,7 +10,7 @@ enabled: true
 # How many block physics events in 1 second (20 ticks)
 # will trigger a "lag" warning?
 # Default: 5000
-lag-threshold: 20000
+lag-threshold: 5000
 
 # How many "strikes" a chunk gets before it is frozen.
 # Default: 3
