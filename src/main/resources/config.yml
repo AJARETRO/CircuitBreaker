@@ -38,3 +38,36 @@ freeze-duration-ticks: 6000
 
 
 notify-admins: true
+
+# ------------------------------
+# Entity Culling Settings (v2.0)
+# ------------------------------
+# This entire system is separate from the physics lag detector.
+entity-culling:
+  # Set to true to enable this new entity-culling feature.
+  # This is disabled by default to prevent unexpected entity removal.
+  enabled: false
+
+  # How often (in seconds) should the plugin scan all loaded chunks?
+  # This is a HEAVY task. Do not set this too low!
+  # 15-30 seconds is a safe range.
+  scan-interval-seconds: 15
+
+  # How many entities must be in a *single chunk* to trigger a cull.
+  # This count includes *all* entities (items, mobs, armor stands, etc.).
+  threshold: 500
+
+  # A list of entity types to *NEVER* kill.
+  # (Case-insensitive, uses Bukkit's EntityType names)
+  # These are just my recommendations; feel free to add/remove!
+  whitelist:
+    - "PLAYER"
+    - "VILLAGER"
+    - "IRON_GOLEM"
+    - "WANDERING_TRADER"
+    - "ARMOR_STAND"
+    - "ITEM_FRAME"
+    - "PAINTING"
+    - "MINECART" # Catches all minecart types
+    - "BOAT"
+    - "CHEST_BOAT"

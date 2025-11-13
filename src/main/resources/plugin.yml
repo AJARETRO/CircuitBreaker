@@ -1,7 +1,7 @@
 # src/main/resources/plugin.yml
 
 name: CircuitBreaker
-version: '1.1'
+version: '2.0'
 main: dev.ajaretro.circuitBreaker.CircuitBreaker # <-- Corrected to camelCase
 api-version: '1.21'
 prefix: 'CircuitBreaker'
