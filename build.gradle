@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id("xyz.jpenilla.run-paper") version "2.3.1"
+    id("com.gradleup.shadow") version "8.3.0"
 }
 
 group = 'dev.ajaretro'
@@ -17,6 +18,7 @@ repositories {
 dependencies {
     // <-- The fix is here! Changed 1.21.10 to 1.21.1
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    implementation("org.bstats:bstats-bukkit:3.0.2")
 }
 
 tasks {
@@ -54,8 +56,12 @@ processResources {
         expand props
     }
 }
-jar {
-    // This removes all the extra info and names the file exactly as we want.
-    // It will output: CircuitBreaker-v1.0.0.jar (if your version is set to 1.0.0)
+shadowJar {
+    relocate 'org.bstats', 'dev.ajaretro.circuitBreaker.bstats'
+    archiveClassifier.set('')
     archiveFileName = "${project.name}-v${project.version.replace('-SNAPSHOT', '')}.jar"
 }
+jar {
+    enabled = false
+}
+build.dependsOn(shadowJar)

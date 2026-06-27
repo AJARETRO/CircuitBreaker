@@ -45,6 +45,10 @@ public class LagManager {
     private FileConfiguration dataConfig = null;
     private File dataFile = null;
 
+    // --- Stats ---
+    private int lagMachinesStopped = 0;
+    private int totalPlaytimeMinutes = 0;
+
     public LagManager(CircuitBreaker plugin) {
         this.plugin = plugin;
 
@@ -81,6 +85,18 @@ public class LagManager {
             startEntityScanner();
             plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GREEN + "Entity Culler is enabled and running.");
         }
+
+        // Playtime stats tracker
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                int online = Bukkit.getOnlinePlayers().size();
+                if (online > 0) {
+                    totalPlaytimeMinutes += online;
+                    saveIgnoredChunks();
+                }
+            }
+        }.runTaskTimer(plugin, 1200L, 1200L);
     }
 
     // --- v1.0 Physics Lag Methods ---
@@ -143,6 +159,10 @@ public class LagManager {
 
                                 // 1. Log to console
                                 plugin.getServer().getConsoleSender().sendMessage(consoleMessage);
+
+                                // Increment stats
+                                lagMachinesStopped++;
+                                saveIgnoredChunks();
 
                                 // 2. Notify in-game admins (if enabled)
                                 // We re-use the 'notify-admins' config setting
@@ -228,6 +248,10 @@ public class LagManager {
         plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.YELLOW + "Persistent lag! Freezing chunk [" + chunk.getX() + ", " + chunk.getZ() + "]");
         frozenChunks.add(chunk);
 
+        // Increment stats
+        this.lagMachinesStopped++;
+        saveIgnoredChunks();
+
         if (freezeDuration > -1) {
             new BukkitRunnable() {
                 @Override
@@ -308,7 +332,12 @@ public class LagManager {
         List<String> ignoredList = dataConfig.getStringList("ignored-chunks");
         ignoredChunks.clear();
         ignoredChunks.addAll(ignoredList);
-        plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Loaded " + ignoredChunks.size() + " ignored chunks from data.yml.");
+
+        // Load stats
+        this.lagMachinesStopped = dataConfig.getInt("stats.lag-machines-stopped", 0);
+        this.totalPlaytimeMinutes = dataConfig.getInt("stats.total-playtime-minutes", 0);
+
+        plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Loaded " + ignoredChunks.size() + " ignored chunks and statistics.");
     }
 
     public void saveIgnoredChunks() {
@@ -317,10 +346,28 @@ public class LagManager {
         }
         try {
             dataConfig.set("ignored-chunks", new ArrayList<>(ignoredChunks));
+            dataConfig.set("stats.lag-machines-stopped", this.lagMachinesStopped);
+            dataConfig.set("stats.total-playtime-minutes", this.totalPlaytimeMinutes);
             dataConfig.save(dataFile);
         } catch (IOException e) {
-            plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.RED + "Could not save ignored chunks to data.yml!");
+            plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.RED + "Could not save ignored chunks and stats to data.yml!");
             e.printStackTrace();
         }
+    }
+
+    public int getLagMachinesStopped() {
+        return lagMachinesStopped;
+    }
+
+    public int getTotalPlaytimeMinutes() {
+        return totalPlaytimeMinutes;
+    }
+
+    public boolean isPhysicsLagEnabled() {
+        return physicsLagEnabled;
+    }
+
+    public boolean isEntityCullingEnabled() {
+        return entityCullingEnabled;
     }
 }

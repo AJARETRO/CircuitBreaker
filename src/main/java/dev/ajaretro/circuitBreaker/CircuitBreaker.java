@@ -3,6 +3,9 @@ package dev.ajaretro.circuitBreaker;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bstats.bukkit.Metrics;
+import org.bstats.charts.SingleLineChart;
+import org.bstats.charts.SimplePie;
 
 public final class CircuitBreaker extends JavaPlugin {
 
@@ -32,6 +35,18 @@ public final class CircuitBreaker extends JavaPlugin {
         Bukkit.getConsoleSender().sendMessage(prefix + "LagListener registered.");
 
         this.lagManager = new LagManager(this);
+
+        // Initialize bStats
+        try {
+            Metrics metrics = new Metrics(this, 32242);
+            metrics.addCustomChart(new SingleLineChart("lag_machines_stopped", () -> this.lagManager.getLagMachinesStopped()));
+            metrics.addCustomChart(new SingleLineChart("total_playtime", () -> this.lagManager.getTotalPlaytimeMinutes()));
+            metrics.addCustomChart(new SimplePie("physics_lag_enabled", () -> String.valueOf(this.lagManager.isPhysicsLagEnabled())));
+            metrics.addCustomChart(new SimplePie("entity_culling_enabled", () -> String.valueOf(this.lagManager.isEntityCullingEnabled())));
+            metrics.addCustomChart(new SimplePie("world_count", () -> String.valueOf(Bukkit.getWorlds().size())));
+        } catch (Exception e) {
+            getLogger().warning("Failed to initialize bStats: " + e.getMessage());
+        }
 
         CircuitBreakerCommand cbCommand = new CircuitBreakerCommand(this);
         getCommand("circuitbreaker").setExecutor(cbCommand);
