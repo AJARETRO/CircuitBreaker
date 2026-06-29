@@ -7,7 +7,6 @@ import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Vehicle;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -19,15 +18,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Handles detection, monitoring, and freezing of laggy chunks,
+ * as well as entity culling optimization.
+ */
 public class LagManager {
 
     private final CircuitBreaker plugin;
     private final Map<Chunk, Integer> strikeList = new ConcurrentHashMap<>();
-    // Use ConcurrentHashMap.newKeySet() for thread-safe sets
     private final Set<Chunk> frozenChunks = ConcurrentHashMap.newKeySet();
     private final Set<String> ignoredChunks = ConcurrentHashMap.newKeySet();
 
-    // --- v1.0 Config Values ---
+    // Core detection parameters
     private final boolean physicsLagEnabled;
     private final int lagThreshold;
     private final int strikeLimit;
@@ -36,7 +38,7 @@ public class LagManager {
     private final boolean notifyAdmins;
     private final int strikeResetMinutes;
 
-    // --- v2.0 ENTITY CULLER Config Values ---
+    // Entity culler parameters
     private final boolean entityCullingEnabled;
     private final int entityThreshold;
     private final long entityScanInterval;
@@ -45,141 +47,123 @@ public class LagManager {
     private FileConfiguration dataConfig = null;
     private File dataFile = null;
 
-    // --- Stats ---
+    // Statistics
     private int lagMachinesStopped = 0;
     private int totalPlaytimeMinutes = 0;
 
     public LagManager(CircuitBreaker plugin) {
         this.plugin = plugin;
 
-        // --- Load v1.0 Config.yml ---
-        this.physicsLagEnabled = plugin.getConfig().getBoolean("enabled", true);
-        this.lagThreshold = plugin.getConfig().getInt("lag-threshold", 20000);
-        this.strikeLimit = plugin.getConfig().getInt("strike-limit", 3);
-        this.softResetDuration = plugin.getConfig().getLong("soft-reset-duration-ticks", 200L);
-        this.freezeDuration = plugin.getConfig().getLong("freeze-duration-ticks", 6000L);
-        this.notifyAdmins = plugin.getConfig().getBoolean("notify-admins", true);
-        this.strikeResetMinutes = plugin.getConfig().getInt("strike-reset-minutes", 15);
+        // Load configuration keys
+        FileConfiguration config = plugin.getConfig();
+        this.physicsLagEnabled = config.getBoolean("enabled", true);
+        this.lagThreshold = config.getInt("lag-threshold", 20000);
+        this.strikeLimit = config.getInt("strike-limit", 3);
+        this.softResetDuration = config.getLong("soft-reset-duration-ticks", 200L);
+        this.freezeDuration = config.getLong("freeze-duration-ticks", 6000L);
+        this.notifyAdmins = config.getBoolean("notify-admins", true);
+        this.strikeResetMinutes = config.getInt("strike-reset-minutes", 15);
 
-        // --- v2.0: Load Entity Culler Config ---
-        this.entityCullingEnabled = plugin.getConfig().getBoolean("entity-culling.enabled", false);
-        this.entityThreshold = plugin.getConfig().getInt("entity-culling.threshold", 500);
-        this.entityWhitelist = plugin.getConfig().getStringList("entity-culling.whitelist");
-        long scanSeconds = plugin.getConfig().getLong("entity-culling.scan-interval-seconds", 15);
+        // Load entity culler parameters
+        this.entityCullingEnabled = config.getBoolean("entity-culling.enabled", false);
+        this.entityThreshold = config.getInt("entity-culling.threshold", 500);
+        this.entityWhitelist = config.getStringList("entity-culling.whitelist");
+        long scanSeconds = config.getLong("entity-culling.scan-interval-seconds", 15);
         this.entityScanInterval = scanSeconds * 20L;
 
         loadIgnoredChunks();
 
-        // Start v1.0 Physics Ticker
+        // Initialize core tickers using clean lambda syntax
         if (this.physicsLagEnabled) {
             startTicker();
             if (this.strikeResetMinutes > 0) {
                 startStrikeResetter();
             }
         } else {
-            plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.YELLOW + "Physics Lag detection is disabled via config.yml.");
+            plugin.getServer().getConsoleSender().sendMessage(
+                ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.YELLOW + "Physics Lag detection is disabled via config.yml."
+            );
         }
 
-        // --- v2.0: Start Entity Culler Ticker ---
         if (this.entityCullingEnabled) {
             startEntityScanner();
-            plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GREEN + "Entity Culler is enabled and running.");
+            plugin.getServer().getConsoleSender().sendMessage(
+                ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GREEN + "Entity Culler is enabled and running."
+            );
         }
 
-        // Playtime stats tracker
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                int online = Bukkit.getOnlinePlayers().size();
-                if (online > 0) {
-                    totalPlaytimeMinutes += online;
-                    saveIgnoredChunks();
-                }
+        // Start playtime tracking task
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            int online = Bukkit.getOnlinePlayers().size();
+            if (online > 0) {
+                totalPlaytimeMinutes += online;
+                saveIgnoredChunks();
             }
-        }.runTaskTimer(plugin, 1200L, 1200L);
+        }, 1200L, 1200L);
     }
 
-    // --- v1.0 Physics Lag Methods ---
-
     private void startTicker() {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                Map<Chunk, Integer> counts = plugin.getLagListener().getAndResetCounts();
-                for (Map.Entry<Chunk, Integer> entry : counts.entrySet()) {
-                    Chunk chunk = entry.getKey();
-                    if (isIgnored(chunk)) {
-                        continue;
-                    }
-                    int count = entry.getValue();
-                    if (count > lagThreshold) {
-                        handleLaggyChunk(chunk, count);
-                    }
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            Map<Chunk, Integer> counts = plugin.getLagListener().getAndResetCounts();
+            for (Map.Entry<Chunk, Integer> entry : counts.entrySet()) {
+                Chunk chunk = entry.getKey();
+                if (isIgnored(chunk)) {
+                    continue;
+                }
+                int count = entry.getValue();
+                if (count > lagThreshold) {
+                    handleLaggyChunk(chunk, count);
                 }
             }
-        }.runTaskTimer(plugin, 0L, 20L);
+        }, 0L, 20L);
     }
 
     private void startStrikeResetter() {
         long resetTicks = this.strikeResetMinutes * 60 * 20L;
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                strikeList.clear();
-                plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "All chunk strikes have been reset.");
-            }
-        }.runTaskTimer(plugin, resetTicks, resetTicks);
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            strikeList.clear();
+            plugin.getServer().getConsoleSender().sendMessage(
+                ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "All chunk strikes have been reset."
+            );
+        }, resetTicks, resetTicks);
 
-        plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Strike resetter task started. Will clear all strikes every " + strikeResetMinutes + " minutes.");
+        plugin.getServer().getConsoleSender().sendMessage(
+            ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Strike resetter task started. Will clear all strikes every " + strikeResetMinutes + " minutes."
+        );
     }
 
-    // --- v2.0: ENTITY CULLER METHODS ---
-
     private void startEntityScanner() {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                for (World world : plugin.getServer().getWorlds()) {
-                    for (Chunk chunk : world.getLoadedChunks()) {
-                        if (isIgnored(chunk)) {
-                            continue;
-                        }
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            for (World world : plugin.getServer().getWorlds()) {
+                for (Chunk chunk : world.getLoadedChunks()) {
+                    if (isIgnored(chunk)) {
+                        continue;
+                    }
 
-                        Entity[] entities = chunk.getEntities();
+                    Entity[] entities = chunk.getEntities();
+                    if (entities.length > entityThreshold) {
+                        int culledCount = cullChunk(chunk, entities);
 
-                        if (entities.length > entityThreshold) {
-                            // We found a problem chunk, cull it
-                            int culledCount = cullChunk(chunk, entities);
+                        if (culledCount > 0) {
+                            String consoleMessage = ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.YELLOW +
+                                    "Entity Culler removed " + culledCount + " entities from chunk at [" +
+                                    chunk.getX() + ", " + chunk.getZ() + "] in " + world.getName();
 
-                            // --- NEW: Log and Notify Admins ---
-                            if (culledCount > 0) {
-                                String consoleMessage = ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.YELLOW +
+                            plugin.getServer().getConsoleSender().sendMessage(consoleMessage);
+                            lagMachinesStopped++;
+                            saveIgnoredChunks();
+
+                            if (notifyAdmins) {
+                                String adminMessage = ChatColor.RED + "[CircuitBreaker] " + ChatColor.YELLOW +
                                         "Entity Culler removed " + culledCount + " entities from chunk at [" +
-                                        chunk.getX() + ", " + chunk.getZ() + "] in " + world.getName();
-
-                                // 1. Log to console
-                                plugin.getServer().getConsoleSender().sendMessage(consoleMessage);
-
-                                // Increment stats
-                                lagMachinesStopped++;
-                                saveIgnoredChunks();
-
-                                // 2. Notify in-game admins (if enabled)
-                                // We re-use the 'notify-admins' config setting
-                                if (notifyAdmins) {
-                                    String adminMessage = ChatColor.RED + "[CircuitBreaker] " + ChatColor.YELLOW +
-                                            "Entity Culler removed " + culledCount + " entities from chunk at [" +
-                                            chunk.getX() + ", " + chunk.getZ() + "]";
-                                    // We re-use the 'antilag.notify' permission
-                                    Bukkit.broadcast(adminMessage, "antilag.notify");
-                                }
+                                        chunk.getX() + ", " + chunk.getZ() + "]";
+                                Bukkit.broadcast(adminMessage, "antilag.notify");
                             }
-                            // --- END NEW ---
                         }
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, entityScanInterval);
+        }, 0L, entityScanInterval);
     }
 
     private int cullChunk(Chunk chunk, Entity[] entities) {
@@ -209,8 +193,6 @@ public class LagManager {
         return false;
     }
 
-    // --- v1.0 CORE & ADMIN METHODS ---
-
     private void handleLaggyChunk(Chunk chunk, int count) {
         if (isFrozen(chunk)) {
             return;
@@ -233,33 +215,33 @@ public class LagManager {
     }
 
     private void performSoftReset(Chunk chunk) {
-        plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Performing soft reset on chunk [" + chunk.getX() + ", " + chunk.getZ() + "]");
+        plugin.getServer().getConsoleSender().sendMessage(
+            ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Performing soft reset on chunk [" + chunk.getX() + ", " + chunk.getZ() + "]"
+        );
         chunk.unload();
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Reloading chunk [" + chunk.getX() + ", " + chunk.getZ() + "]");
-                chunk.load();
-            }
-        }.runTaskLater(plugin, softResetDuration);
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            plugin.getServer().getConsoleSender().sendMessage(
+                ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Reloading chunk [" + chunk.getX() + ", " + chunk.getZ() + "]"
+            );
+            chunk.load();
+        }, softResetDuration);
     }
 
     private void performHardFreeze(Chunk chunk) {
-        plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.YELLOW + "Persistent lag! Freezing chunk [" + chunk.getX() + ", " + chunk.getZ() + "]");
+        plugin.getServer().getConsoleSender().sendMessage(
+            ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.YELLOW + "Persistent lag! Freezing chunk [" + chunk.getX() + ", " + chunk.getZ() + "]"
+        );
         frozenChunks.add(chunk);
-
-        // Increment stats
         this.lagMachinesStopped++;
         saveIgnoredChunks();
 
         if (freezeDuration > -1) {
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Auto-unfreezing chunk [" + chunk.getX() + ", " + chunk.getZ() + "]");
-                    frozenChunks.remove(chunk);
-                }
-            }.runTaskLater(plugin, freezeDuration);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                plugin.getServer().getConsoleSender().sendMessage(
+                    ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Auto-unfreezing chunk [" + chunk.getX() + ", " + chunk.getZ() + "]"
+                );
+                frozenChunks.remove(chunk);
+            }, freezeDuration);
         }
     }
 
@@ -333,11 +315,12 @@ public class LagManager {
         ignoredChunks.clear();
         ignoredChunks.addAll(ignoredList);
 
-        // Load stats
         this.lagMachinesStopped = dataConfig.getInt("stats.lag-machines-stopped", 0);
         this.totalPlaytimeMinutes = dataConfig.getInt("stats.total-playtime-minutes", 0);
 
-        plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Loaded " + ignoredChunks.size() + " ignored chunks and statistics.");
+        plugin.getServer().getConsoleSender().sendMessage(
+            ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Loaded " + ignoredChunks.size() + " ignored chunks and statistics."
+        );
     }
 
     public void saveIgnoredChunks() {
@@ -350,7 +333,9 @@ public class LagManager {
             dataConfig.set("stats.total-playtime-minutes", this.totalPlaytimeMinutes);
             dataConfig.save(dataFile);
         } catch (IOException e) {
-            plugin.getServer().getConsoleSender().sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.RED + "Could not save ignored chunks and stats to data.yml!");
+            plugin.getServer().getConsoleSender().sendMessage(
+                ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.RED + "Could not save ignored chunks and stats to data.yml!"
+            );
             e.printStackTrace();
         }
     }
