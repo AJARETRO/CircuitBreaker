@@ -1,8 +1,13 @@
 # ⚙️ CircuitBreaker v2.0 | The All-in-One Performance Suite
 
-![CircuitBreaker Banner](httpsS://github.com/AJARETRO/CircuitBreaker/raw/master/banner.png)
+![CircuitBreaker Banner](https://github.com/AJARETRO/CircuitBreaker/raw/master/banner.png)
+
+[![Official Website](https://img.shields.io/badge/Official-Website-red?style=for-the-badge&logo=googlechrome)](https://ajaretro.dev/circuitbreaker.html)
+[![Modrinth Download](https://img.shields.io/badge/Modrinth-Download-00AD5C?style=for-the-badge&logo=modrinth)](https://modrinth.com/project/circuitbreaker)
+[![GitHub Releases](https://img.shields.io/badge/GitHub-Releases-222222?style=for-the-badge&logo=github)](https://github.com/AJARETRO/CircuitBreaker/releases)
 
 **CircuitBreaker** is a powerful, high-performance anti-lag plugin for modern Minecraft (Paper 1.21+). It moves beyond basic entity killing by providing a **dual-system, automated response** to both **physics lag** and **entity lag**.
+
 
 This plugin ensures your server maintains high **TPS** by surgically neutralizing lag sources without punishing legitimate players.
 
@@ -35,7 +40,7 @@ This is the core of the plugin. It *only* detects **Block Physics Lag**.
 3.  **Strike 3 (Hard Freeze):** If the lag persists, the plugin performs a "Hard Freeze," adding the chunk to a "jail" and **canceling all future physics events** from it.
 4.  **The "Forgiveness" Timer:** A global timer (`strike-reset-minutes`) clears all strikes every 15 minutes to ensure fairness.
 
-![CircuitBreaker Demo GIF](httpsS://github.com/AJARETRO/CircuitBreaker/raw/master/demo.gif)
+![CircuitBreaker Demo GIF](https://github.com/AJARETRO/CircuitBreaker/raw/master/demo.gif)
 
 ---
 
