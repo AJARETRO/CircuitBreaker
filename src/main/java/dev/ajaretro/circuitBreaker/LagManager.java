@@ -53,6 +53,7 @@ public class LagManager {
 
     // Statistics
     private int lagMachinesStopped = 0;
+    private int physicsEventsDefused = 0;
     private int totalPlaytimeMinutes = 0;
 
     public LagManager(CircuitBreaker plugin) {
@@ -442,6 +443,7 @@ public class LagManager {
         ignoredChunks.addAll(ignoredList);
 
         this.lagMachinesStopped = dataConfig.getInt("stats.lag-machines-stopped", 0);
+        this.physicsEventsDefused = dataConfig.getInt("stats.physics-events-defused", 0);
         this.totalPlaytimeMinutes = dataConfig.getInt("stats.total-playtime-minutes", 0);
 
         plugin.getServer().getConsoleSender().sendMessage(
@@ -456,6 +458,7 @@ public class LagManager {
         try {
             dataConfig.set("ignored-chunks", new ArrayList<>(ignoredChunks));
             dataConfig.set("stats.lag-machines-stopped", this.lagMachinesStopped);
+            dataConfig.set("stats.physics-events-defused", this.physicsEventsDefused);
             dataConfig.set("stats.total-playtime-minutes", this.totalPlaytimeMinutes);
             dataConfig.save(dataFile);
         } catch (IOException e) {
@@ -472,6 +475,14 @@ public class LagManager {
 
     public int getTotalPlaytimeMinutes() {
         return totalPlaytimeMinutes;
+    }
+
+    public int getPhysicsEventsDefused() {
+        return physicsEventsDefused;
+    }
+
+    public void incrementEventsDefused() {
+        this.physicsEventsDefused++;
     }
 
     public boolean isPhysicsLagEnabled() {

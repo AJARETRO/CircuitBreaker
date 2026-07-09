@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'dev.ajaretro'
-version = '2.2'
+version = '2.2.1'
 
 repositories {
     mavenCentral()
@@ -75,14 +75,10 @@ hangarPublish {
             apiKey.set("38df77b6-f7be-4aab-bb9b-1afbf620ce5b.16fc2981-9c0f-4dc6-b66d-653343378984")
             version.set(project.version)
             channel.set("Release")
-            changelog.set("""Advanced Sentinel Release v2.2
+            changelog.set("""Advanced Sentinel Release v2.2.1
 
-- **Dynamic Threshold Scaling:** Automatically adjusts physics event thresholds based on live TPS and MSPT load averages.
-- **3x3 Chunk Freezing:** When a chunk triggers Strike 3 (Hard Freeze), a 3x3 grid centered around that chunk is frozen to catch machines spanning chunk borders.
-- **Clickable Chat Alerts:** Broadcasts interactive admin alerts with built-in [TP], [UNFREEZE], and [IGNORE] actions.
-- **Improved `/cb unfreeze` command:** Supports optional radius (e.g. `/cb unfreeze 3`) and falls back to a 10x10 block area unfreeze if omitted.
-- **`/cb top` subcommand:** Real-time diagnostics command showing top 5 chunks with highest block physics activity.
-- **Packet Spam Sentinel:** Dynamically injects into player Netty connection pipeline to throttle packet-spam crash exploit clients.""")
+- **Physics Events Defused Counter:** Added tracking and persistent saving of total physics events blocked in frozen chunks.
+- **bStats Custom Charts:** Added a live line chart tracking `physics_events_defused` to show real-time performance impacts on the bStats dashboard.""")
             platforms {
                 paper {
                     jar.set(tasks.shadowJar.archiveFile)

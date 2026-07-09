@@ -32,6 +32,7 @@ public class LagListener implements Listener {
 
         if (manager.isFrozen(worldUid, chunkX, chunkZ)) {
             event.setCancelled(true);
+            manager.incrementEventsDefused();
             return;
         }
 

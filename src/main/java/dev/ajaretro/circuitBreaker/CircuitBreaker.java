@@ -44,6 +44,7 @@ public final class CircuitBreaker extends JavaPlugin {
         try {
             Metrics metrics = new Metrics(this, 32242);
             metrics.addCustomChart(new SingleLineChart("lag_machines_stopped", () -> this.lagManager.getLagMachinesStopped()));
+            metrics.addCustomChart(new SingleLineChart("physics_events_defused", () -> this.lagManager.getPhysicsEventsDefused()));
             metrics.addCustomChart(new SingleLineChart("total_playtime", () -> this.lagManager.getTotalPlaytimeMinutes()));
             metrics.addCustomChart(new SimplePie("physics_lag_enabled", () -> String.valueOf(this.lagManager.isPhysicsLagEnabled())));
             metrics.addCustomChart(new SimplePie("entity_culling_enabled", () -> String.valueOf(this.lagManager.isEntityCullingEnabled())));
