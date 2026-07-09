@@ -71,3 +71,12 @@ entity-culling:
     - "MINECART" # Catches all minecart types
     - "BOAT"
     - "CHEST_BOAT"
+
+# ------------------------------
+# Auto-Updater Settings (v2.2)
+# ------------------------------
+auto-update:
+  # Set to true to automatically download new versions when available.
+  # If false, it will only notify you in the console.
+  enabled: true
+
