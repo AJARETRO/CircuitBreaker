@@ -341,6 +341,63 @@ public class LagManager {
                 player.spigot().sendMessage(message);
             }
         }
+
+        // Webhook Trigger
+        if (plugin.getConfig().getBoolean("discord-webhook.enabled", false)) {
+            World world = Bukkit.getWorld(key.getWorldUid());
+            String worldName = world != null ? world.getName() : "unknown";
+            double tps = 20.0;
+            double mspt = 20.0;
+            try {
+                tps = Bukkit.getTPS()[0];
+                mspt = Bukkit.getAverageTickTime();
+            } catch (Throwable ignored) {}
+            sendDiscordWebhook(worldName, key.getX(), key.getZ(), count, tps, mspt);
+        }
+    }
+
+    private void sendDiscordWebhook(String worldName, int cx, int cz, int count, double tps, double mspt) {
+        String urlString = plugin.getConfig().getString("discord-webhook.url", "");
+        if (urlString.isEmpty()) return;
+
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                java.net.URL url = new java.net.URL(urlString);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("User-Agent", "CircuitBreaker-Webhook");
+                conn.setDoOutput(true);
+
+                // Build payload
+                String json = "{"
+                    + "\"embeds\": [{"
+                    + "  \"title\": \"⚙️ CircuitBreaker Sentinel Alert\","
+                    + "  \"url\": \"https://ajaretro.dev/circuitbreaker.html\","
+                    + "  \"color\": 10027008," // #990000
+                    + "  \"description\": \"⚠️ **A persistent lag source was detected and neutralized!**\","
+                    + "  \"fields\": ["
+                    + "    {\"name\": \"🌍 World\", \"value\": \"" + worldName + "\", \"inline\": true},"
+                    + "    {\"name\": \"📍 Coordinates\", \"value\": \"Chunk: [" + cx + ", " + cz + "]\\\\nBlock X: " + (cx << 4) + ", Z: " + (cz << 4) + "\", \"inline\": true},"
+                    + "    {\"name\": \"⚡ Physics Rate\", \"value\": \"" + count + " events/sec\", \"inline\": true},"
+                    + "    {\"name\": \"📈 Server Load\", \"value\": \"TPS: " + String.format("%.2f", tps) + " | MSPT: " + String.format("%.1f", mspt) + "ms\", \"inline\": false},"
+                    + "    {\"name\": \"💾 Teleport Command\", \"value\": \"`/tp " + (cx << 4) + " 100 " + (cz << 4) + "`\", \"inline\": false},"
+                    + "    {\"name\": \"📥 Modrinth Page\", \"value\": \"[Download on Modrinth](https://modrinth.com/project/circuitbreaker)\", \"inline\": false}"
+                    + "  ],"
+                    + "  \"footer\": {\"text\": \"CircuitBreaker Anti-Lag Guard • ajaretro.dev\"}"
+                    + "}]"
+                    + "}";
+
+                try (java.io.OutputStream os = conn.getOutputStream()) {
+                    byte[] input = json.getBytes("utf-8");
+                    os.write(input, 0, input.length);
+                }
+
+                conn.getResponseCode();
+            } catch (Exception e) {
+                plugin.getLogger().warning("Failed to send Discord Webhook: " + e.getMessage());
+            }
+        });
     }
 
     private String getChunkIdentifier(Chunk chunk) {
@@ -491,5 +548,17 @@ public class LagManager {
 
     public boolean isEntityCullingEnabled() {
         return entityCullingEnabled;
+    }
+
+    public java.util.Set<ChunkKey> getFrozenChunks() {
+        return frozenChunks;
+    }
+
+    public java.util.Set<String> getIgnoredChunksList() {
+        return ignoredChunks;
+    }
+
+    public int getIgnoredChunksCount() {
+        return ignoredChunks.size();
     }
 }

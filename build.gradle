@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'dev.ajaretro'
-version = '2.2.1'
+version = '2.3'
 
 repositories {
     mavenCentral()
@@ -75,10 +75,11 @@ hangarPublish {
             apiKey.set("38df77b6-f7be-4aab-bb9b-1afbf620ce5b.16fc2981-9c0f-4dc6-b66d-653343378984")
             version.set(project.version)
             channel.set("Release")
-            changelog.set("""Advanced Sentinel Release v2.2.1
+            changelog.set("""Advanced Sentinel Panel & Webhook Release v2.3
 
-- **Physics Events Defused Counter:** Added tracking and persistent saving of total physics events blocked in frozen chunks.
-- **bStats Custom Charts:** Added a live line chart tracking `physics_events_defused` to show real-time performance impacts on the bStats dashboard.""")
+- **In-Game GUI Control Panel (`/cb gui`):** A custom interactive chest GUI dashboard allowing admins to view server health, list/teleport/unfreeze frozen chunks, and manage whitelists.
+- **Discord Webhook Alerts:** Sends rich, customizable embed alerts to your Discord channels when lag machines are neutralized.
+- **Defused Events counter:** Tracks and reports the number of prevented lag physics loops to bStats and the GUI panel.""")
             platforms {
                 paper {
                     jar.set(tasks.shadowJar.archiveFile)

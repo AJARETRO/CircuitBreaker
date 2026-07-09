@@ -11,6 +11,7 @@ public final class CircuitBreaker extends JavaPlugin {
 
     private LagListener lagListener;
     private LagManager lagManager;
+    private GUIListener guiListener;
 
     @Override
     public void onEnable() {
@@ -39,6 +40,10 @@ public final class CircuitBreaker extends JavaPlugin {
         Bukkit.getConsoleSender().sendMessage(prefix + "PacketInterceptor registered.");
 
         this.lagManager = new LagManager(this);
+
+        this.guiListener = new GUIListener(this);
+        getServer().getPluginManager().registerEvents(this.guiListener, this);
+        Bukkit.getConsoleSender().sendMessage(prefix + "GUIListener registered.");
 
         // Initialize bStats
         try {
@@ -103,5 +108,9 @@ public final class CircuitBreaker extends JavaPlugin {
 
     public LagManager getLagManager() {
         return lagManager;
+    }
+
+    public GUIListener getGuiListener() {
+        return guiListener;
     }
 }

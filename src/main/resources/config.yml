@@ -80,3 +80,14 @@ auto-update:
   # If false, it will only notify you in the console.
   enabled: true
 
+# ------------------------------
+# Discord Webhook Alerts (v2.2)
+# ------------------------------
+discord-webhook:
+  # Set to true to broadcast sentinel alerts to your Discord channel.
+  enabled: false
+  
+  # Paste your Discord Channel Webhook Integration URL below.
+  url: ""
+
+

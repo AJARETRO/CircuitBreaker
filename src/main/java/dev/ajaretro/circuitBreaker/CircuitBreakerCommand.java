@@ -113,6 +113,11 @@ public class CircuitBreakerCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage(prefix + "Chunk " + chunkCoords + " status: " + status);
                 break;
 
+            case "gui":
+            case "panel":
+                plugin.getGuiListener().openMainGui(player);
+                break;
+
             default:
                 sendHelp(player);
                 break;
@@ -122,6 +127,7 @@ public class CircuitBreakerCommand implements CommandExecutor, TabCompleter {
 
     private void sendHelp(CommandSender sender) {
         sender.sendMessage(prefix + "--- CircuitBreaker Admin ---");
+        sender.sendMessage(ChatColor.AQUA + "/cb gui" + ChatColor.GRAY + " - Opens the visual sentinel control panel GUI.");
         sender.sendMessage(ChatColor.AQUA + "/cb status" + ChatColor.GRAY + " - Checks the status of your current chunk.");
         sender.sendMessage(ChatColor.AQUA + "/cb unfreeze [radius]" + ChatColor.GRAY + " - Unfreezes a chunk radius (default: 10x10 blocks).");
         sender.sendMessage(ChatColor.AQUA + "/cb top" + ChatColor.GRAY + " - Shows the top 5 chunks with highest physics activity.");
@@ -132,7 +138,7 @@ public class CircuitBreakerCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> commands = Arrays.asList("status", "unfreeze", "top", "ignore", "unignore", "help");
+            List<String> commands = Arrays.asList("status", "gui", "panel", "unfreeze", "top", "ignore", "unignore", "help");
             // Return a list of commands that start with what the user is typing
             return commands.stream()
                     .filter(s -> s.startsWith(args[0].toLowerCase()))
