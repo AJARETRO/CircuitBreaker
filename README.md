@@ -1,4 +1,4 @@
-# ⚙️ CircuitBreaker v2.2 | The Advanced Performance Sentinel
+# ⚙️ CircuitBreaker v2.3 | The Ultimate Performance Sentinel
 
 ![CircuitBreaker Banner](https://github.com/AJARETRO/CircuitBreaker/raw/master/banner.png)
 
@@ -28,6 +28,14 @@ This plugin ensures your server maintains high **TPS** by surgically neutralizin
 
 ## ✨ What's New?
 
+### ⚙️ v2.3: The Control Panel & Webhook Update
+* **In-Game GUI Control Panel (`/cb gui`):** Opens a fully interactive chest-menu dashboard to view server health, list/teleport/unfreeze frozen chunks, and manage whitelists visually.
+* **Discord Webhook Alerts:** Sends rich, stylized Discord embeds notifying you when a lag source has been detected and neutralized (includes /tp command, stats, world info).
+* **Server TPS Sentinel:** Background task monitors general performance and logs detailed lag reports (entities, loaded chunks, TPS/MSPT) to in-game chat and Discord.
+* **Countdown Unfreeze Timers:** Displays real-time auto-unfreeze timers dynamically inside the GUI panel.
+* **Auto-Updater:** Automatically downloads new plugin releases directly into the server's update folder for seamless, crash-free restarts.
+* **Configuration Reloading (`/cb reload`):** Apply any configuration adjustments (including webhook URLs and alert options) instantly without server restarts.
+
 ### 🛡️ v2.2: Advanced Sentinel Release
 * **Dynamic Threshold Scaling:** Automatically adjusts physics event thresholds based on live TPS and MSPT load averages (stricter under load, lenient when healthy).
 * **3x3 Chunk Freezing:** When a chunk triggers Strike 3 (Hard Freeze), a 3x3 grid centered around that chunk is frozen to catch machines spanning chunk borders.
@@ -35,12 +43,6 @@ This plugin ensures your server maintains high **TPS** by surgically neutralizin
 * **Improved `/cb unfreeze` Command:** Supports optional radius (e.g. `/cb unfreeze 3`) and falls back to a 10x10 block area unfreeze if omitted.
 * **`/cb top` Subcommand:** Real-time diagnostics command showing top 5 chunks with highest block physics activity.
 * **Packet Spam Sentinel:** Dynamically injects into player Netty connection pipeline to throttle packet-spam crash exploit clients.
-
-### ⚡ v2.1: Performance & GC Optimization
-* **GC Memory Leak Prevention:** Decoupled chunk tracking maps from strong `org.bukkit.Chunk` references using a custom lightweight `ChunkKey` class, allowing unloaded chunks to be garbage collected.
-* **Load-Spreading Scanner:** The entity culler spreads its chunk scanning workload across ticks (processing batches of 50 per tick) to eliminate main-thread TPS micro-stuttering.
-* **Optimized Physics Checks:** Replaced expensive Bukkit `event.getBlock().getChunk()` calls inside `LagListener` with fast bit-shifted coordinates (`block.getX() >> 4`).
-* **Update Checker:** Integrated an asynchronous update checker checking GitHub releases.
 
 ---
 
@@ -79,26 +81,28 @@ You have 100% control. All administrative actions (like ignoring chunks) are **s
 | Permission | Description | Default |
 | :--- | :--- | :--- |
 | `circuitbreaker.admin` | Grants access to all `/cb` commands. | `op` |
-| `antilag.notify` | Receives alerts when a chunk is frozen *or* culled. | `op` |
+| `antilag.notify` | Receives alerts when a chunk is frozen, culled, or TPS falls. | `op` |
 
 ### 📟 Commands
 | Command | Alias | Description |
 | :--- | :--- | :--- |
+| `/cb gui` | `/cb panel` | Opens the visual chest-menu control panel dashboard. |
 | `/cb status` | `/cb status` | Checks the status of your current chunk (`NORMAL`, `WATCHED`, `FROZEN`, `IGNORED`). |
 | `/cb unfreeze [radius]` | `/cb unfreeze` | Unfreezes chunks within a radius (default: 10x10 block area around position). |
 | `/cb top` | `/cb top` | Shows the top 5 chunks with highest block physics activity in the last second. |
 | `/cb ignore` | `/cb ignore` | Whitelists your current chunk. It will be ignored by both the physics lag and entity culling systems. |
 | `/cb unignore` | `/cb unignore` | Removes your current chunk from the permanent ignore list. |
+| `/cb reload` | `/cb reload` | Instantly reloads the configuration from config.yml. |
 
 ---
 
-## 🔧 Full Configuration (`config.yml` v2.2)
+## 🔧 Full Configuration (`config.yml` v2.3)
 
 Tune the plugin to perfectly match your server's needs.
 
 ```yaml
 # ------------------------------
-# CircuitBreaker Config v2.2
+# CircuitBreaker Config v2.3
 # ------------------------------
 
 # --- v1.0: Physics Lag Detector ---
@@ -160,6 +164,40 @@ packet-sentinel:
   
   # How many packets a player is allowed to send per second.
   threshold-per-second: 600
+
+# ------------------------------
+# Auto-Updater Settings (v2.2)
+# ------------------------------
+auto-update:
+  # Set to true to automatically download new versions when available.
+  # If false, it will only notify you in the console.
+  enabled: true
+
+# ------------------------------
+# Discord Webhook Alerts (v2.2)
+# ------------------------------
+discord-webhook:
+  # Set to true to broadcast sentinel alerts to your Discord channel.
+  enabled: false
+  
+  # Paste your Discord Channel Webhook Integration URL below.
+  url: ""
+
+# ------------------------------
+# Server TPS Sentinel (v2.3)
+# ------------------------------
+tps-sentinel:
+  # Set to true to broadcast performance alerts when TPS drops.
+  enabled: true
+  
+  # The TPS threshold below which the sentinel will trigger alerts.
+  threshold: 18.0
+  
+  # The MSPT threshold above which the sentinel will trigger alerts.
+  mspt-threshold: 48.0
+  
+  # Send the performance report to the Discord Webhook too?
+  send-to-webhook: true
 ```
 
 ### 🔗 Compatibility
