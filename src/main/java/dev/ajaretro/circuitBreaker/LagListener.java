@@ -15,6 +15,7 @@ public class LagListener implements Listener {
 
     private final CircuitBreaker plugin;
     private final Map<ChunkKey, Integer> eventCounter = new ConcurrentHashMap<>();
+    private Map<ChunkKey, Integer> lastSnapshot = new ConcurrentHashMap<>();
 
     public LagListener(CircuitBreaker plugin) {
         this.plugin = plugin;
@@ -49,6 +50,11 @@ public class LagListener implements Listener {
     public Map<ChunkKey, Integer> getAndResetCounts() {
         Map<ChunkKey, Integer> snapshot = new ConcurrentHashMap<>(eventCounter);
         eventCounter.clear();
+        this.lastSnapshot = snapshot;
         return snapshot;
+    }
+
+    public Map<ChunkKey, Integer> getLastSnapshot() {
+        return lastSnapshot;
     }
 }

@@ -19,6 +19,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.bukkit.entity.Player;
+import org.bukkit.Location;
+
 /**
  * Handles detection, monitoring, and freezing of laggy chunks,
  * as well as entity culling optimization.
@@ -112,11 +115,28 @@ public class LagManager {
                     continue;
                 }
                 int count = entry.getValue();
-                if (count > lagThreshold) {
+                if (count > getDynamicThreshold()) {
                     handleLaggyChunk(key, count);
                 }
             }
         }, 0L, 20L);
+    }
+
+    public int getDynamicThreshold() {
+        double tps = 20.0;
+        double mspt = 20.0;
+        try {
+            tps = Bukkit.getTPS()[0];
+            mspt = Bukkit.getAverageTickTime();
+        } catch (Throwable ignored) {}
+
+        if (tps < 18.5 || mspt > 45.0) {
+            return Math.max(1000, lagThreshold / 4);
+        }
+        if (tps < 19.5 || mspt > 35.0) {
+            return Math.max(2000, lagThreshold / 2);
+        }
+        return lagThreshold;
     }
 
     private void startStrikeResetter() {
@@ -264,33 +284,62 @@ public class LagManager {
 
     private void performHardFreeze(ChunkKey key) {
         plugin.getServer().getConsoleSender().sendMessage(
-            ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.YELLOW + "Persistent lag! Freezing chunk [" + key.getX() + ", " + key.getZ() + "]"
+            ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.YELLOW + "Persistent lag! Freezing 3x3 chunks around [" + key.getX() + ", " + key.getZ() + "]"
         );
-        frozenChunks.add(key);
+        
+        UUID worldUid = key.getWorldUid();
+        int cx = key.getX();
+        int cz = key.getZ();
+
+        for (int x = cx - 1; x <= cx + 1; x++) {
+            for (int z = cz - 1; z <= cz + 1; z++) {
+                ChunkKey k = new ChunkKey(worldUid, x, z);
+                frozenChunks.add(k);
+                
+                if (freezeDuration > -1) {
+                    final ChunkKey finalK = k;
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        frozenChunks.remove(finalK);
+                    }, freezeDuration);
+                }
+            }
+        }
+        
         this.lagMachinesStopped++;
         saveIgnoredChunks();
-
-        if (freezeDuration > -1) {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                plugin.getServer().getConsoleSender().sendMessage(
-                    ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Auto-unfreezing chunk [" + key.getX() + ", " + key.getZ() + "]"
-                );
-                frozenChunks.remove(key);
-            }, freezeDuration);
-        }
     }
 
     private void notifyAdmins(ChunkKey key, int count) {
         if (!notifyAdmins) {
             return;
         }
-        World world = Bukkit.getWorld(key.getWorldUid());
-        String worldName = world != null ? world.getName() : "unknown";
-        String message = ChatColor.RED + "[CircuitBreaker] " + ChatColor.YELLOW +
-                "Persistent lag (" + count + " events) detected! " +
-                "Chunk at [" + key.getX() + ", " + key.getZ() + "] in " +
-                worldName + " has been frozen.";
-        Bukkit.broadcast(message, "antilag.notify");
+        
+        net.md_5.bungee.api.chat.TextComponent message = new net.md_5.bungee.api.chat.TextComponent(
+            ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.RED + "Lag machine frozen in chunk " + 
+            "[" + key.getX() + ", " + key.getZ() + "] (" + count + " events). "
+        );
+
+        net.md_5.bungee.api.chat.TextComponent teleportBtn = new net.md_5.bungee.api.chat.TextComponent(ChatColor.AQUA + "[TP] ");
+        teleportBtn.setClickEvent(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, "/tp " + (key.getX() << 4) + " 100 " + (key.getZ() << 4)));
+        teleportBtn.setHoverEvent(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, new net.md_5.bungee.api.chat.hover.content.Text("Teleport to chunk")));
+
+        net.md_5.bungee.api.chat.TextComponent unfreezeBtn = new net.md_5.bungee.api.chat.TextComponent(ChatColor.GREEN + "[UNFREEZE] ");
+        unfreezeBtn.setClickEvent(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, "/cb unfreeze"));
+        unfreezeBtn.setHoverEvent(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, new net.md_5.bungee.api.chat.hover.content.Text("Unfreeze this area")));
+
+        net.md_5.bungee.api.chat.TextComponent ignoreBtn = new net.md_5.bungee.api.chat.TextComponent(ChatColor.GRAY + "[IGNORE]");
+        ignoreBtn.setClickEvent(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, "/cb ignore"));
+        ignoreBtn.setHoverEvent(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, new net.md_5.bungee.api.chat.hover.content.Text("Whitelist this chunk")));
+
+        message.addExtra(teleportBtn);
+        message.addExtra(unfreezeBtn);
+        message.addExtra(ignoreBtn);
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.hasPermission("antilag.notify")) {
+                player.spigot().sendMessage(message);
+            }
+        }
     }
 
     private String getChunkIdentifier(Chunk chunk) {
@@ -306,7 +355,10 @@ public class LagManager {
     }
 
     public String getChunkStatus(Chunk chunk) {
-        ChunkKey key = new ChunkKey(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ());
+        return getChunkStatus(new ChunkKey(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ()));
+    }
+
+    public String getChunkStatus(ChunkKey key) {
         if (isFrozen(key.getWorldUid(), key.getX(), key.getZ())) {
             return ChatColor.RED + "FROZEN";
         }
@@ -323,6 +375,41 @@ public class LagManager {
         ChunkKey key = new ChunkKey(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ());
         strikeList.remove(key);
         return frozenChunks.remove(key);
+    }
+
+    public int unfreezeArea(Location loc, int radius) {
+        UUID worldUid = loc.getWorld().getUID();
+        int cx = loc.getBlockX() >> 4;
+        int cz = loc.getBlockZ() >> 4;
+
+        int count = 0;
+        if (radius >= 0) {
+            for (int x = cx - radius; x <= cx + radius; x++) {
+                for (int z = cz - radius; z <= cz + radius; z++) {
+                    ChunkKey k = new ChunkKey(worldUid, x, z);
+                    strikeList.remove(k);
+                    if (frozenChunks.remove(k)) {
+                        count++;
+                    }
+                }
+            }
+        } else {
+            int minCX = (loc.getBlockX() - 5) >> 4;
+            int maxCX = (loc.getBlockX() + 5) >> 4;
+            int minCZ = (loc.getBlockZ() - 5) >> 4;
+            int maxCZ = (loc.getBlockZ() + 5) >> 4;
+
+            for (int x = minCX; x <= maxCX; x++) {
+                for (int z = minCZ; z <= maxCZ; z++) {
+                    ChunkKey k = new ChunkKey(worldUid, x, z);
+                    strikeList.remove(k);
+                    if (frozenChunks.remove(k)) {
+                        count++;
+                    }
+                }
+            }
+        }
+        return count;
     }
 
     public boolean addChunkToIgnoreList(Chunk chunk) {

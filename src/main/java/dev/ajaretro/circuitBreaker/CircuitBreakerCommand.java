@@ -48,10 +48,47 @@ public class CircuitBreakerCommand implements CommandExecutor, TabCompleter {
 
         switch (subCommand) {
             case "unfreeze":
-                if (manager.manuallyUnfreezeChunk(chunk)) {
-                    player.sendMessage(prefix + "Chunk " + chunkCoords + " has been manually unfrozen.");
+                int radius = -1;
+                if (args.length > 1) {
+                    try {
+                        radius = Integer.parseInt(args[1]);
+                    } catch (NumberFormatException e) {
+                        player.sendMessage(prefix + ChatColor.RED + "Invalid radius number. Usage: /cb unfreeze [radius]");
+                        return true;
+                    }
+                }
+                
+                int count = manager.unfreezeArea(player.getLocation(), radius);
+                if (count > 0) {
+                    if (radius >= 0) {
+                        player.sendMessage(prefix + "Unfrozen " + count + " chunks within a " + radius + "-chunk radius.");
+                    } else {
+                        player.sendMessage(prefix + "Unfrozen " + count + " chunks within a 10x10 block area.");
+                    }
                 } else {
-                    player.sendMessage(prefix + "Chunk " + chunkCoords + " was not frozen.");
+                    player.sendMessage(prefix + "No frozen chunks found in the designated area.");
+                }
+                break;
+
+            case "top":
+                java.util.Map<ChunkKey, Integer> snapshot = plugin.getLagListener().getLastSnapshot();
+                if (snapshot.isEmpty()) {
+                    player.sendMessage(prefix + "No block physics activity recorded in the last second.");
+                    return true;
+                }
+                
+                java.util.List<java.util.Map.Entry<ChunkKey, Integer>> sorted = snapshot.entrySet().stream()
+                        .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                        .limit(5)
+                        .collect(Collectors.toList());
+                        
+                player.sendMessage(prefix + "--- Top 5 Chunks by Block Physics Updates ---");
+                for (int i = 0; i < sorted.size(); i++) {
+                    java.util.Map.Entry<ChunkKey, Integer> entry = sorted.get(i);
+                    ChunkKey k = entry.getKey();
+                    player.sendMessage(ChatColor.GRAY + "" + (i + 1) + ". " + ChatColor.RED + 
+                            "[" + k.getX() + ", " + k.getZ() + "]" + ChatColor.YELLOW + " - " + 
+                            entry.getValue() + " events (" + manager.getChunkStatus(k) + ")");
                 }
                 break;
 
@@ -86,7 +123,8 @@ public class CircuitBreakerCommand implements CommandExecutor, TabCompleter {
     private void sendHelp(CommandSender sender) {
         sender.sendMessage(prefix + "--- CircuitBreaker Admin ---");
         sender.sendMessage(ChatColor.AQUA + "/cb status" + ChatColor.GRAY + " - Checks the status of your current chunk.");
-        sender.sendMessage(ChatColor.AQUA + "/cb unfreeze" + ChatColor.GRAY + " - Manually unfreezes your current chunk.");
+        sender.sendMessage(ChatColor.AQUA + "/cb unfreeze [radius]" + ChatColor.GRAY + " - Unfreezes a chunk radius (default: 10x10 blocks).");
+        sender.sendMessage(ChatColor.AQUA + "/cb top" + ChatColor.GRAY + " - Shows the top 5 chunks with highest physics activity.");
         sender.sendMessage(ChatColor.AQUA + "/cb ignore" + ChatColor.GRAY + " - Makes the plugin ignore your current chunk.");
         sender.sendMessage(ChatColor.AQUA + "/cb unignore" + ChatColor.GRAY + " - Removes your current chunk from the ignore list.");
     }
@@ -94,7 +132,7 @@ public class CircuitBreakerCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> commands = Arrays.asList("status", "unfreeze", "ignore", "unignore", "help");
+            List<String> commands = Arrays.asList("status", "unfreeze", "top", "ignore", "unignore", "help");
             // Return a list of commands that start with what the user is typing
             return commands.stream()
                     .filter(s -> s.startsWith(args[0].toLowerCase()))

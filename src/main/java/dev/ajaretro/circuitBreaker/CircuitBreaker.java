@@ -34,6 +34,10 @@ public final class CircuitBreaker extends JavaPlugin {
         getServer().getPluginManager().registerEvents(this.lagListener, this);
         Bukkit.getConsoleSender().sendMessage(prefix + "LagListener registered.");
 
+        PacketInterceptor packetInterceptor = new PacketInterceptor(this);
+        getServer().getPluginManager().registerEvents(packetInterceptor, this);
+        Bukkit.getConsoleSender().sendMessage(prefix + "PacketInterceptor registered.");
+
         this.lagManager = new LagManager(this);
 
         // Initialize bStats
