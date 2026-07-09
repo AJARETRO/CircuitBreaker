@@ -1,13 +1,13 @@
-# ⚙️ CircuitBreaker v2.0 | The All-in-One Performance Suite
+# ⚙️ CircuitBreaker v2.2 | The Advanced Performance Sentinel
 
 ![CircuitBreaker Banner](https://github.com/AJARETRO/CircuitBreaker/raw/master/banner.png)
 
 [![Official Website](https://img.shields.io/badge/Official-Website-red?style=for-the-badge&logo=googlechrome)](https://ajaretro.dev/circuitbreaker.html)
 [![Modrinth Download](https://img.shields.io/badge/Modrinth-Download-00AD5C?style=for-the-badge&logo=modrinth)](https://modrinth.com/project/circuitbreaker)
+[![Hangar Download](https://img.shields.io/badge/Hangar-Download-007acc?style=for-the-badge&logo=papermc)](https://hangar.papermc.io/AJA_RETRO/CircuitBreaker)
 [![GitHub Releases](https://img.shields.io/badge/GitHub-Releases-222222?style=for-the-badge&logo=github)](https://github.com/AJARETRO/CircuitBreaker/releases)
 
-**CircuitBreaker** is a powerful, high-performance anti-lag plugin for modern Minecraft (Paper 1.21+). It moves beyond basic entity killing by providing a **dual-system, automated response** to both **physics lag** and **entity lag**.
-
+**CircuitBreaker** is a powerful, high-performance anti-lag plugin for modern Minecraft (Paper 1.21+). It moves beyond basic entity killing by providing a **multi-system, automated response** to physics lag, entity build-ups, and packet exploits.
 
 This plugin ensures your server maintains high **TPS** by surgically neutralizing lag sources without punishing legitimate players.
 
@@ -19,15 +19,25 @@ This plugin ensures your server maintains high **TPS** by surgically neutralizin
 * **Intelligent:** Uses a "tiered response" to differentiate between a temporary spike and a malicious, persistent machine.
 * **Non-Destructive (Physics):** The physics lag system *never* breaks blocks or destroys player property; it only pauses the laggy process.
 * **Smart Culling (Entities):** The *optional* entity lag system intelligently removes excess entities while protecting important ones (pets, named mobs, villagers, etc.).
+* **Dynamic Scaling:** Automatically adapts its detection thresholds to match the server's live performance.
 
 ---
 
-## ✨ v2.0: What's New?
+## ✨ What's New?
 
-This release adds the **Entity Culling System**, a new, optional feature that runs alongside the original physics detector. You now have two layers of defense:
+### 🛡️ v2.2: Advanced Sentinel Release
+* **Dynamic Threshold Scaling:** Automatically adjusts physics event thresholds based on live TPS and MSPT load averages (stricter under load, lenient when healthy).
+* **3x3 Chunk Freezing:** When a chunk triggers Strike 3 (Hard Freeze), a 3x3 grid centered around that chunk is frozen to catch machines spanning chunk borders.
+* **Clickable Chat Alerts:** Broadcasts interactive admin alerts with built-in `[TP]`, `[UNFREEZE]`, and `[IGNORE]` click actions.
+* **Improved `/cb unfreeze` Command:** Supports optional radius (e.g. `/cb unfreeze 3`) and falls back to a 10x10 block area unfreeze if omitted.
+* **`/cb top` Subcommand:** Real-time diagnostics command showing top 5 chunks with highest block physics activity.
+* **Packet Spam Sentinel:** Dynamically injects into player Netty connection pipeline to throttle packet-spam crash exploit clients.
 
-1.  **Physics Lag Detector (v1.0):** The 3-Strike "Hard Freeze" system that stops redstone/piston lag machines.
-2.  **Entity Lag Culler (v2.0):** An optional scanner that removes excessive, unimportant entities (e.g., from massive mob farms) to prevent entity cramming lag.
+### ⚡ v2.1: Performance & GC Optimization
+* **GC Memory Leak Prevention:** Decoupled chunk tracking maps from strong `org.bukkit.Chunk` references using a custom lightweight `ChunkKey` class, allowing unloaded chunks to be garbage collected.
+* **Load-Spreading Scanner:** The entity culler spreads its chunk scanning workload across ticks (processing batches of 50 per tick) to eliminate main-thread TPS micro-stuttering.
+* **Optimized Physics Checks:** Replaced expensive Bukkit `event.getBlock().getChunk()` calls inside `LagListener` with fast bit-shifted coordinates (`block.getX() >> 4`).
+* **Update Checker:** Integrated an asynchronous update checker checking GitHub releases.
 
 ---
 
@@ -35,22 +45,20 @@ This release adds the **Entity Culling System**, a new, optional feature that ru
 
 This is the core of the plugin. It *only* detects **Block Physics Lag**.
 
-1.  **Detection:** The plugin counts every `BlockPhysicsEvent` (from pistons, redstone, water, etc.) per chunk, every second.
-2.  **Strike 1 & 2 (Soft Reset):** If a chunk exceeds the `lag-threshold`, it performs a "Soft Reset"—unloading and reloading the chunk to break simple loops.
-3.  **Strike 3 (Hard Freeze):** If the lag persists, the plugin performs a "Hard Freeze," adding the chunk to a "jail" and **canceling all future physics events** from it.
-4.  **The "Forgiveness" Timer:** A global timer (`strike-reset-minutes`) clears all strikes every 15 minutes to ensure fairness.
-
-![CircuitBreaker Demo GIF](https://github.com/AJARETRO/CircuitBreaker/raw/master/demo.gif)
+1. **Detection:** The plugin counts every `BlockPhysicsEvent` (from pistons, redstone, water, etc.) per chunk, every second.
+2. **Strike 1 & 2 (Soft Reset):** If a chunk exceeds the `lag-threshold`, it performs a "Soft Reset"—unloading and reloading the chunk to break simple loops.
+3. **Strike 3 (Hard Freeze):** If the lag persists, the plugin performs a "Hard Freeze," adding the 3x3 grid of chunks centered on the source to a "jail" and **canceling all future physics events** from them.
+4. **The "Forgiveness" Timer:** A global timer (`strike-reset-minutes`) clears all strikes every 15 minutes to ensure fairness.
 
 ---
 
 ## 💡 System 2: Entity Lag (The Culler)
 
-This is the new **optional** v2.0 system. It must be enabled in `config.yml`.
+This is the **optional** system. It must be enabled in `config.yml`.
 
-1.  **Detection:** A separate, slower ticker (`scan-interval-seconds`) runs to check the total number of entities in each loaded chunk.
-2.  **Threshold Check:** If `chunk.getEntities().length` is greater than the `entity-culling.threshold` (e.g., 500), it triggers a cull.
-3.  **Smart Culling:** The plugin loops through all entities in that chunk and **removes** them *unless* they are "important."
+1. **Detection:** A separate, slower ticker (`scan-interval-seconds`) runs to check the total number of entities in each loaded chunk.
+2. **Threshold Check:** If `chunk.getEntities().length` is greater than the `entity-culling.threshold` (e.g., 500), it triggers a cull.
+3. **Smart Culling:** The plugin loops through all entities in that chunk and **removes** them *unless* they are "important."
 
 ### What is an "Important" Entity? (Will NOT be culled)
 * Anything on the `entity-culling.whitelist` in the config (e.g., "PLAYER", "VILLAGER", "IRON_GOLEM").
@@ -74,19 +82,20 @@ You have 100% control. All administrative actions (like ignoring chunks) are **s
 | Command | Alias | Description |
 | :--- | :--- | :--- |
 | `/cb status` | `/cb status` | Checks the status of your current chunk (`NORMAL`, `WATCHED`, `FROZEN`, `IGNORED`). |
-| `/cb unfreeze` | `/cb unfreeze` | Manually unfreezes a (physics-lag) frozen chunk. |
-| `/cb ignore` | `/cb ignore` | **(Most Important!)** Whitelists your current chunk. It will be ignored by *both* the physics lag and entity lag systems. |
+| `/cb unfreeze [radius]` | `/cb unfreeze` | Unfreezes chunks within a radius (default: 10x10 block area around position). |
+| `/cb top` | `/cb top` | Shows the top 5 chunks with highest block physics activity in the last second. |
+| `/cb ignore` | `/cb ignore` | Whitelists your current chunk. It will be ignored by both the physics lag and entity culling systems. |
 | `/cb unignore` | `/cb unignore` | Removes your current chunk from the permanent ignore list. |
 
 ---
 
-## 🔧 Full Configuration (`config.yml` v2.0)
+## 🔧 Full Configuration (`config.yml` v2.2)
 
 Tune the plugin to perfectly match your server's needs.
 
 ```yaml
 # ------------------------------
-# CircuitBreaker Config v2.0
+# CircuitBreaker Config v2.2
 # ------------------------------
 
 # --- v1.0: Physics Lag Detector ---
@@ -119,7 +128,7 @@ notify-admins: true
 # v2.0: Entity Culling Settings
 # ------------------------------
 entity-culling:
-  # Set to true to enable this new entity-culling feature.
+  # Set to true to enable this entity-culling feature.
   # This is disabled by default.
   enabled: false
 
@@ -138,9 +147,18 @@ entity-culling:
     - "ARMOR_STAND"
     - "ITEM_FRAME"
     - "PAINTING"
+
+# ------------------------------
+# v2.2: Packet Sentinel Settings
+# ------------------------------
+packet-sentinel:
+  # Set to true to enable packet spam detection and throttle crash exploit clients.
+  enabled: true
+  
+  # How many packets a player is allowed to send per second.
+  threshold-per-second: 600
 ```
 
-### Compatibility
-Requires: Paper 1.21+ (or forks like Purpur, Pufferfish).
-
-Folia: This plugin is NOT compatible with Folia. It includes a safety check and will disable itself if Folia is detected, logging a clear message to your console.
+### 🔗 Compatibility
+* **Requires:** Paper 1.21+ (or forks like Purpur, Pufferfish).
+* **Folia:** This plugin is **NOT** compatible with Folia. It includes a safety check and will disable itself if Folia is detected, logging a clear message to your console.
