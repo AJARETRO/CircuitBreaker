@@ -1,11 +1,11 @@
 package dev.ajaretro.circuitBreaker;
 
-import org.bukkit.Chunk;
+import org.bukkit.block.Block;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPhysicsEvent;
-
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class LagListener implements Listener {
 
     private final CircuitBreaker plugin;
-    private final Map<Chunk, Integer> eventCounter = new ConcurrentHashMap<>();
+    private final Map<ChunkKey, Integer> eventCounter = new ConcurrentHashMap<>();
 
     public LagListener(CircuitBreaker plugin) {
         this.plugin = plugin;
@@ -22,27 +22,32 @@ public class LagListener implements Listener {
 
     @EventHandler
     public void onBlockPhysics(BlockPhysicsEvent event) {
-        Chunk chunk = event.getBlock().getChunk();
+        Block block = event.getBlock();
+        int chunkX = block.getX() >> 4;
+        int chunkZ = block.getZ() >> 4;
+        UUID worldUid = block.getWorld().getUID();
+
         LagManager manager = plugin.getLagManager();
 
-        if (manager.isFrozen(chunk)) {
+        if (manager.isFrozen(worldUid, chunkX, chunkZ)) {
             event.setCancelled(true);
             return;
         }
 
-        if (manager.isIgnored(chunk)) {
+        if (manager.isIgnored(worldUid, chunkX, chunkZ)) {
             return;
         }
 
+        ChunkKey key = new ChunkKey(worldUid, chunkX, chunkZ);
         // Increment event count for the chunk using a thread-safe atomic merge
-        eventCounter.merge(chunk, 1, Integer::sum);
+        eventCounter.merge(key, 1, Integer::sum);
     }
 
     /**
      * Snapshots the current event counts and resets the counter for the next interval.
      */
-    public Map<Chunk, Integer> getAndResetCounts() {
-        Map<Chunk, Integer> snapshot = new ConcurrentHashMap<>(eventCounter);
+    public Map<ChunkKey, Integer> getAndResetCounts() {
+        Map<ChunkKey, Integer> snapshot = new ConcurrentHashMap<>(eventCounter);
         eventCounter.clear();
         return snapshot;
     }

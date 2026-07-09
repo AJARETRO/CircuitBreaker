@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -25,8 +26,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class LagManager {
 
     private final CircuitBreaker plugin;
-    private final Map<Chunk, Integer> strikeList = new ConcurrentHashMap<>();
-    private final Set<Chunk> frozenChunks = ConcurrentHashMap.newKeySet();
+    private final Map<ChunkKey, Integer> strikeList = new ConcurrentHashMap<>();
+    private final Set<ChunkKey> frozenChunks = ConcurrentHashMap.newKeySet();
     private final Set<String> ignoredChunks = ConcurrentHashMap.newKeySet();
 
     // Core detection parameters
@@ -73,7 +74,7 @@ public class LagManager {
 
         loadIgnoredChunks();
 
-        // Initialize core tickers using clean lambda syntax
+        // Initialize core tickers
         if (this.physicsLagEnabled) {
             startTicker();
             if (this.strikeResetMinutes > 0) {
@@ -104,15 +105,15 @@ public class LagManager {
 
     private void startTicker() {
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            Map<Chunk, Integer> counts = plugin.getLagListener().getAndResetCounts();
-            for (Map.Entry<Chunk, Integer> entry : counts.entrySet()) {
-                Chunk chunk = entry.getKey();
-                if (isIgnored(chunk)) {
+            Map<ChunkKey, Integer> counts = plugin.getLagListener().getAndResetCounts();
+            for (Map.Entry<ChunkKey, Integer> entry : counts.entrySet()) {
+                ChunkKey key = entry.getKey();
+                if (isIgnored(key.getWorldUid(), key.getX(), key.getZ())) {
                     continue;
                 }
                 int count = entry.getValue();
                 if (count > lagThreshold) {
-                    handleLaggyChunk(chunk, count);
+                    handleLaggyChunk(key, count);
                 }
             }
         }, 0L, 20L);
@@ -134,35 +135,64 @@ public class LagManager {
 
     private void startEntityScanner() {
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            List<Chunk> chunksToScan = new ArrayList<>();
             for (World world : plugin.getServer().getWorlds()) {
                 for (Chunk chunk : world.getLoadedChunks()) {
-                    if (isIgnored(chunk)) {
-                        continue;
-                    }
-
-                    Entity[] entities = chunk.getEntities();
-                    if (entities.length > entityThreshold) {
-                        int culledCount = cullChunk(chunk, entities);
-
-                        if (culledCount > 0) {
-                            String consoleMessage = ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.YELLOW +
-                                    "Entity Culler removed " + culledCount + " entities from chunk at [" +
-                                    chunk.getX() + ", " + chunk.getZ() + "] in " + world.getName();
-
-                            plugin.getServer().getConsoleSender().sendMessage(consoleMessage);
-                            lagMachinesStopped++;
-                            saveIgnoredChunks();
-
-                            if (notifyAdmins) {
-                                String adminMessage = ChatColor.RED + "[CircuitBreaker] " + ChatColor.YELLOW +
-                                        "Entity Culler removed " + culledCount + " entities from chunk at [" +
-                                        chunk.getX() + ", " + chunk.getZ() + "]";
-                                Bukkit.broadcast(adminMessage, "antilag.notify");
-                            }
-                        }
+                    if (!isIgnored(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ())) {
+                        chunksToScan.add(chunk);
                     }
                 }
             }
+
+            if (chunksToScan.isEmpty()) return;
+
+            // Spread chunk culling scans over multiple ticks (50 chunks per tick) to prevent TPS drop
+            final int chunksPerTick = 50;
+            final int totalChunks = chunksToScan.size();
+            
+            new org.bukkit.scheduler.BukkitRunnable() {
+                private int currentIndex = 0;
+
+                @Override
+                public void run() {
+                    if (currentIndex >= totalChunks) {
+                        this.cancel();
+                        return;
+                    }
+
+                    int limit = Math.min(currentIndex + chunksPerTick, totalChunks);
+                    for (int i = currentIndex; i < limit; i++) {
+                        Chunk chunk = chunksToScan.get(i);
+                        if (!chunk.isLoaded()) {
+                            continue;
+                        }
+
+                        Entity[] entities = chunk.getEntities();
+                        if (entities.length > entityThreshold) {
+                            int culledCount = cullChunk(chunk, entities);
+
+                            if (culledCount > 0) {
+                                String consoleMessage = ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.YELLOW +
+                                        "Entity Culler removed " + culledCount + " entities from chunk at [" +
+                                        chunk.getX() + ", " + chunk.getZ() + "] in " + chunk.getWorld().getName();
+
+                                plugin.getServer().getConsoleSender().sendMessage(consoleMessage);
+                                lagMachinesStopped++;
+                                saveIgnoredChunks();
+
+                                if (notifyAdmins) {
+                                    String adminMessage = ChatColor.RED + "[CircuitBreaker] " + ChatColor.YELLOW +
+                                            "Entity Culler removed " + culledCount + " entities from chunk at [" +
+                                            chunk.getX() + ", " + chunk.getZ() + "]";
+                                    Bukkit.broadcast(adminMessage, "antilag.notify");
+                                }
+                            }
+                        }
+                    }
+                    currentIndex += chunksPerTick;
+                }
+            }.runTaskTimer(plugin, 0L, 1L);
+
         }, 0L, entityScanInterval);
     }
 
@@ -193,66 +223,73 @@ public class LagManager {
         return false;
     }
 
-    private void handleLaggyChunk(Chunk chunk, int count) {
-        if (isFrozen(chunk)) {
+    private void handleLaggyChunk(ChunkKey key, int count) {
+        if (isFrozen(key.getWorldUid(), key.getX(), key.getZ())) {
             return;
         }
 
-        int strikes = strikeList.getOrDefault(chunk, 0) + 1;
+        int strikes = strikeList.getOrDefault(key, 0) + 1;
         plugin.getServer().getConsoleSender().sendMessage(
-                ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Lag detected in chunk [" + chunk.getX() + ", " + chunk.getZ() + "] (" + count + " events). " +
+                ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Lag detected in chunk [" + key.getX() + ", " + key.getZ() + "] (" + count + " events). " +
                         "Strike " + strikes + "/" + strikeLimit
         );
 
         if (strikes >= strikeLimit) {
-            performHardFreeze(chunk);
-            notifyAdmins(chunk, count);
-            strikeList.remove(chunk);
+            performHardFreeze(key);
+            notifyAdmins(key, count);
+            strikeList.remove(key);
         } else {
-            performSoftReset(chunk);
-            strikeList.put(chunk, strikes);
+            performSoftReset(key);
+            strikeList.put(key, strikes);
         }
     }
 
-    private void performSoftReset(Chunk chunk) {
+    private void performSoftReset(ChunkKey key) {
+        Chunk chunk = key.toChunk();
+        if (chunk == null) return;
         plugin.getServer().getConsoleSender().sendMessage(
-            ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Performing soft reset on chunk [" + chunk.getX() + ", " + chunk.getZ() + "]"
+            ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Performing soft reset on chunk [" + key.getX() + ", " + key.getZ() + "]"
         );
         chunk.unload();
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            plugin.getServer().getConsoleSender().sendMessage(
-                ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Reloading chunk [" + chunk.getX() + ", " + chunk.getZ() + "]"
-            );
-            chunk.load();
+            Chunk reloadedChunk = key.toChunk();
+            if (reloadedChunk != null) {
+                plugin.getServer().getConsoleSender().sendMessage(
+                    ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Reloading chunk [" + key.getX() + ", " + key.getZ() + "]"
+                );
+                reloadedChunk.load();
+            }
         }, softResetDuration);
     }
 
-    private void performHardFreeze(Chunk chunk) {
+    private void performHardFreeze(ChunkKey key) {
         plugin.getServer().getConsoleSender().sendMessage(
-            ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.YELLOW + "Persistent lag! Freezing chunk [" + chunk.getX() + ", " + chunk.getZ() + "]"
+            ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.YELLOW + "Persistent lag! Freezing chunk [" + key.getX() + ", " + key.getZ() + "]"
         );
-        frozenChunks.add(chunk);
+        frozenChunks.add(key);
         this.lagMachinesStopped++;
         saveIgnoredChunks();
 
         if (freezeDuration > -1) {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 plugin.getServer().getConsoleSender().sendMessage(
-                    ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Auto-unfreezing chunk [" + chunk.getX() + ", " + chunk.getZ() + "]"
+                    ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "Auto-unfreezing chunk [" + key.getX() + ", " + key.getZ() + "]"
                 );
-                frozenChunks.remove(chunk);
+                frozenChunks.remove(key);
             }, freezeDuration);
         }
     }
 
-    private void notifyAdmins(Chunk chunk, int count) {
+    private void notifyAdmins(ChunkKey key, int count) {
         if (!notifyAdmins) {
             return;
         }
+        World world = Bukkit.getWorld(key.getWorldUid());
+        String worldName = world != null ? world.getName() : "unknown";
         String message = ChatColor.RED + "[CircuitBreaker] " + ChatColor.YELLOW +
                 "Persistent lag (" + count + " events) detected! " +
-                "Chunk at [" + chunk.getX() + ", " + chunk.getZ() + "] in " +
-                chunk.getWorld().getName() + " has been frozen.";
+                "Chunk at [" + key.getX() + ", " + key.getZ() + "] in " +
+                worldName + " has been frozen.";
         Bukkit.broadcast(message, "antilag.notify");
     }
 
@@ -260,30 +297,32 @@ public class LagManager {
         return chunk.getWorld().getUID().toString() + ":" + chunk.getX() + ":" + chunk.getZ();
     }
 
-    public boolean isFrozen(Chunk chunk) {
-        return frozenChunks.contains(chunk);
+    public boolean isFrozen(UUID worldUid, int x, int z) {
+        return frozenChunks.contains(new ChunkKey(worldUid, x, z));
     }
 
-    public boolean isIgnored(Chunk chunk) {
-        return ignoredChunks.contains(getChunkIdentifier(chunk));
+    public boolean isIgnored(UUID worldUid, int x, int z) {
+        return ignoredChunks.contains(worldUid.toString() + ":" + x + ":" + z);
     }
 
     public String getChunkStatus(Chunk chunk) {
-        if (isFrozen(chunk)) {
+        ChunkKey key = new ChunkKey(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ());
+        if (isFrozen(key.getWorldUid(), key.getX(), key.getZ())) {
             return ChatColor.RED + "FROZEN";
         }
-        if (isIgnored(chunk)) {
+        if (isIgnored(key.getWorldUid(), key.getX(), key.getZ())) {
             return ChatColor.GRAY + "IGNORED (Persistent)";
         }
-        if (strikeList.containsKey(chunk)) {
-            return ChatColor.YELLOW + "WATCHED (Strikes: " + strikeList.get(chunk) + ")";
+        if (strikeList.containsKey(key)) {
+            return ChatColor.YELLOW + "WATCHED (Strikes: " + strikeList.get(key) + ")";
         }
         return ChatColor.GREEN + "NORMAL";
     }
 
     public boolean manuallyUnfreezeChunk(Chunk chunk) {
-        strikeList.remove(chunk);
-        return frozenChunks.remove(chunk);
+        ChunkKey key = new ChunkKey(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ());
+        strikeList.remove(key);
+        return frozenChunks.remove(key);
     }
 
     public boolean addChunkToIgnoreList(Chunk chunk) {

@@ -53,6 +53,9 @@ public final class CircuitBreaker extends JavaPlugin {
         getCommand("circuitbreaker").setTabCompleter(cbCommand);
         Bukkit.getConsoleSender().sendMessage(prefix + "Admin command /cb registered.");
 
+        // Check for updates asynchronously
+        new UpdateChecker(this).checkForUpdates();
+
         Bukkit.getConsoleSender().sendMessage(prefix + ChatColor.GREEN + "Successfully enabled!");
         Bukkit.getConsoleSender().sendMessage(ChatColor.DARK_RED + "==================================================");
     }
