@@ -7,6 +7,9 @@
 [![Hangar Download](https://img.shields.io/badge/Hangar-Download-007acc?style=for-the-badge&logo=papermc)](https://hangar.papermc.io/AJA_RETRO/CircuitBreaker)
 [![GitHub Releases](https://img.shields.io/badge/GitHub-Releases-222222?style=for-the-badge&logo=github)](https://github.com/AJARETRO/CircuitBreaker/releases)
 
+## 📊 Live Statistics
+[![bStats](https://bstats.org/signatures/bukkit/CircuitBreaker.svg)](https://bstats.org/plugin/bukkit/CircuitBreaker/32242)
+
 **CircuitBreaker** is a powerful, high-performance anti-lag plugin for modern Minecraft (Paper 1.21+). It moves beyond basic entity killing by providing a **multi-system, automated response** to physics lag, entity build-ups, and packet exploits.
 
 This plugin ensures your server maintains high **TPS** by surgically neutralizing lag sources without punishing legitimate players.
