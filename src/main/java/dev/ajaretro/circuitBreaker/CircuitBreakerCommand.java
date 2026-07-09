@@ -118,6 +118,11 @@ public class CircuitBreakerCommand implements CommandExecutor, TabCompleter {
                 plugin.getGuiListener().openMainGui(player);
                 break;
 
+            case "reload":
+                manager.reload();
+                player.sendMessage(prefix + ChatColor.GREEN + "Configuration reloaded successfully.");
+                break;
+
             default:
                 sendHelp(player);
                 break;
@@ -133,12 +138,13 @@ public class CircuitBreakerCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(ChatColor.AQUA + "/cb top" + ChatColor.GRAY + " - Shows the top 5 chunks with highest physics activity.");
         sender.sendMessage(ChatColor.AQUA + "/cb ignore" + ChatColor.GRAY + " - Makes the plugin ignore your current chunk.");
         sender.sendMessage(ChatColor.AQUA + "/cb unignore" + ChatColor.GRAY + " - Removes your current chunk from the ignore list.");
+        sender.sendMessage(ChatColor.AQUA + "/cb reload" + ChatColor.GRAY + " - Reloads the configuration from config.yml.");
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            List<String> commands = Arrays.asList("status", "gui", "panel", "unfreeze", "top", "ignore", "unignore", "help");
+            List<String> commands = Arrays.asList("status", "gui", "panel", "unfreeze", "top", "ignore", "unignore", "reload", "help");
             // Return a list of commands that start with what the user is typing
             return commands.stream()
                     .filter(s -> s.startsWith(args[0].toLowerCase()))

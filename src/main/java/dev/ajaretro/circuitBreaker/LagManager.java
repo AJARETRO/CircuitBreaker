@@ -34,19 +34,19 @@ public class LagManager {
     private final Set<String> ignoredChunks = ConcurrentHashMap.newKeySet();
 
     // Core detection parameters
-    private final boolean physicsLagEnabled;
-    private final int lagThreshold;
-    private final int strikeLimit;
-    private final long softResetDuration;
-    private final long freezeDuration;
-    private final boolean notifyAdmins;
-    private final int strikeResetMinutes;
+    private boolean physicsLagEnabled;
+    private int lagThreshold;
+    private int strikeLimit;
+    private long softResetDuration;
+    private long freezeDuration;
+    private boolean notifyAdmins;
+    private int strikeResetMinutes;
 
     // Entity culler parameters
-    private final boolean entityCullingEnabled;
-    private final int entityThreshold;
-    private final long entityScanInterval;
-    private final List<String> entityWhitelist;
+    private boolean entityCullingEnabled;
+    private int entityThreshold;
+    private long entityScanInterval;
+    private List<String> entityWhitelist;
 
     private FileConfiguration dataConfig = null;
     private File dataFile = null;
@@ -524,6 +524,27 @@ public class LagManager {
             );
             e.printStackTrace();
         }
+    }
+
+    public void reload() {
+        plugin.reloadConfig();
+        FileConfiguration config = plugin.getConfig();
+        
+        this.physicsLagEnabled = config.getBoolean("enabled", true);
+        this.lagThreshold = config.getInt("lag-threshold", 20000);
+        this.strikeLimit = config.getInt("strike-limit", 3);
+        this.softResetDuration = config.getLong("soft-reset-duration-ticks", 200L);
+        this.freezeDuration = config.getLong("freeze-duration-ticks", 6000L);
+        this.notifyAdmins = config.getBoolean("notify-admins", true);
+        this.strikeResetMinutes = config.getInt("strike-reset-minutes", 15);
+
+        this.entityCullingEnabled = config.getBoolean("entity-culling.enabled", false);
+        this.entityThreshold = config.getInt("entity-culling.threshold", 500);
+        this.entityWhitelist = config.getStringList("entity-culling.whitelist");
+        long scanSeconds = config.getLong("entity-culling.scan-interval-seconds", 15);
+        this.entityScanInterval = scanSeconds * 20L;
+
+        loadIgnoredChunks();
     }
 
     public int getLagMachinesStopped() {
