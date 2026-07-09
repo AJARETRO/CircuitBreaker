@@ -30,8 +30,17 @@ public class LagManager {
 
     private final CircuitBreaker plugin;
     private final Map<ChunkKey, Integer> strikeList = new ConcurrentHashMap<>();
-    private final Set<ChunkKey> frozenChunks = ConcurrentHashMap.newKeySet();
+    private final Map<ChunkKey, Long> frozenChunks = new ConcurrentHashMap<>();
     private final Set<String> ignoredChunks = ConcurrentHashMap.newKeySet();
+
+    // TPS Sentinel parameters
+    private boolean tpsSentinelEnabled;
+    private double tpsThreshold;
+    private double msptThreshold;
+    private boolean sendTpsToWebhook;
+    
+    private int consecutiveLowTpsSeconds = 0;
+    private long lastTpsReportTime = 0;
 
     // Core detection parameters
     private boolean physicsLagEnabled;
@@ -75,6 +84,14 @@ public class LagManager {
         this.entityWhitelist = config.getStringList("entity-culling.whitelist");
         long scanSeconds = config.getLong("entity-culling.scan-interval-seconds", 15);
         this.entityScanInterval = scanSeconds * 20L;
+
+        // Load TPS Sentinel parameters
+        this.tpsSentinelEnabled = config.getBoolean("tps-sentinel.enabled", true);
+        this.tpsThreshold = config.getDouble("tps-sentinel.threshold", 18.0);
+        this.msptThreshold = config.getDouble("tps-sentinel.mspt-threshold", 48.0);
+        this.sendTpsToWebhook = config.getBoolean("tps-sentinel.send-to-webhook", true);
+        
+        startTpsSentinel();
 
         loadIgnoredChunks();
 
@@ -292,10 +309,12 @@ public class LagManager {
         int cx = key.getX();
         int cz = key.getZ();
 
+        long unfreezeTime = freezeDuration > -1 ? (System.currentTimeMillis() + (freezeDuration * 50)) : -1L;
+
         for (int x = cx - 1; x <= cx + 1; x++) {
             for (int z = cz - 1; z <= cz + 1; z++) {
                 ChunkKey k = new ChunkKey(worldUid, x, z);
-                frozenChunks.add(k);
+                frozenChunks.put(k, unfreezeTime);
                 
                 if (freezeDuration > -1) {
                     final ChunkKey finalK = k;
@@ -405,7 +424,7 @@ public class LagManager {
     }
 
     public boolean isFrozen(UUID worldUid, int x, int z) {
-        return frozenChunks.contains(new ChunkKey(worldUid, x, z));
+        return frozenChunks.containsKey(new ChunkKey(worldUid, x, z));
     }
 
     public boolean isIgnored(UUID worldUid, int x, int z) {
@@ -432,7 +451,7 @@ public class LagManager {
     public boolean manuallyUnfreezeChunk(Chunk chunk) {
         ChunkKey key = new ChunkKey(chunk.getWorld().getUID(), chunk.getX(), chunk.getZ());
         strikeList.remove(key);
-        return frozenChunks.remove(key);
+        return frozenChunks.remove(key) != null;
     }
 
     public int unfreezeArea(Location loc, int radius) {
@@ -446,7 +465,7 @@ public class LagManager {
                 for (int z = cz - radius; z <= cz + radius; z++) {
                     ChunkKey k = new ChunkKey(worldUid, x, z);
                     strikeList.remove(k);
-                    if (frozenChunks.remove(k)) {
+                    if (frozenChunks.remove(k) != null) {
                         count++;
                     }
                 }
@@ -461,7 +480,7 @@ public class LagManager {
                 for (int z = minCZ; z <= maxCZ; z++) {
                     ChunkKey k = new ChunkKey(worldUid, x, z);
                     strikeList.remove(k);
-                    if (frozenChunks.remove(k)) {
+                    if (frozenChunks.remove(k) != null) {
                         count++;
                     }
                 }
@@ -544,6 +563,11 @@ public class LagManager {
         long scanSeconds = config.getLong("entity-culling.scan-interval-seconds", 15);
         this.entityScanInterval = scanSeconds * 20L;
 
+        this.tpsSentinelEnabled = config.getBoolean("tps-sentinel.enabled", true);
+        this.tpsThreshold = config.getDouble("tps-sentinel.threshold", 18.0);
+        this.msptThreshold = config.getDouble("tps-sentinel.mspt-threshold", 48.0);
+        this.sendTpsToWebhook = config.getBoolean("tps-sentinel.send-to-webhook", true);
+
         loadIgnoredChunks();
     }
 
@@ -572,6 +596,10 @@ public class LagManager {
     }
 
     public java.util.Set<ChunkKey> getFrozenChunks() {
+        return frozenChunks.keySet();
+    }
+
+    public java.util.Map<ChunkKey, Long> getFrozenChunksMap() {
         return frozenChunks;
     }
 
@@ -581,5 +609,104 @@ public class LagManager {
 
     public int getIgnoredChunksCount() {
         return ignoredChunks.size();
+    }
+
+    private void startTpsSentinel() {
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!tpsSentinelEnabled) return;
+            
+            double tps = 20.0;
+            double mspt = 20.0;
+            try {
+                tps = Bukkit.getTPS()[0];
+                mspt = Bukkit.getAverageTickTime();
+            } catch (Throwable ignored) {}
+            
+            if (tps < tpsThreshold || mspt > msptThreshold) {
+                consecutiveLowTpsSeconds += 5;
+                if (consecutiveLowTpsSeconds >= 15) {
+                    long now = System.currentTimeMillis();
+                    if (now - lastTpsReportTime >= 300000L) { // 5 mins cooldown
+                        lastTpsReportTime = now;
+                        triggerTpsReport(tps, mspt);
+                    }
+                    consecutiveLowTpsSeconds = 0;
+                }
+            } else {
+                consecutiveLowTpsSeconds = 0;
+            }
+        }, 100L, 100L);
+    }
+
+    private void triggerTpsReport(double tps, double mspt) {
+        int loadedChunks = 0;
+        int totalEntities = 0;
+        for (World w : Bukkit.getWorlds()) {
+            loadedChunks += w.getLoadedChunks().length;
+            try {
+                totalEntities += w.getEntityCount();
+            } catch (Throwable t) {
+                totalEntities += w.getEntities().size();
+            }
+        }
+        
+        int players = Bukkit.getOnlinePlayers().size();
+        
+        String alertMsg = ChatColor.GOLD + "[CircuitBreaker] " + ChatColor.RED + "Server performance drop! " +
+            ChatColor.YELLOW + "TPS: " + String.format("%.2f", tps) + " | MSPT: " + String.format("%.1f", mspt) + "ms. " +
+            ChatColor.GRAY + "Players: " + players + " | Loaded Chunks: " + loadedChunks + " | Entities: " + totalEntities;
+            
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (p.hasPermission("antilag.notify")) {
+                p.sendMessage(alertMsg);
+            }
+        }
+        
+        if (sendTpsToWebhook && plugin.getConfig().getBoolean("discord-webhook.enabled", false)) {
+            sendDiscordTpsReport(tps, mspt, loadedChunks, totalEntities, players);
+        }
+    }
+
+    private void sendDiscordTpsReport(double tps, double mspt, int loadedChunks, int totalEntities, int players) {
+        String urlString = plugin.getConfig().getString("discord-webhook.url", "");
+        if (urlString.isEmpty()) return;
+
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                java.net.URL url = new java.net.URL(urlString);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("User-Agent", "CircuitBreaker-Webhook");
+                conn.setDoOutput(true);
+
+                String json = "{"
+                    + "\"embeds\": [{"
+                    + "  \"title\": \"📈 Server Performance Alert\","
+                    + "  \"url\": \"https://ajaretro.dev/circuitbreaker.html\","
+                    + "  \"color\": 16750848," // #ff9900
+                    + "  \"description\": \"⚠️ **The server is experiencing high resource usage!**\","
+                    + "  \"fields\": ["
+                    + "    {\"name\": \"⚡ Server TPS\", \"value\": \"" + String.format("%.2f", tps) + "\", \"inline\": true},"
+                    + "    {\"name\": \"⏱️ Server MSPT\", \"value\": \"" + String.format("%.1f", mspt) + "ms\", \"inline\": true},"
+                    + "    {\"name\": \"👥 Players Online\", \"value\": \"" + players + "\", \"inline\": true},"
+                    + "    {\"name\": \"📦 Loaded Chunks\", \"value\": \"" + loadedChunks + "\", \"inline\": true},"
+                    + "    {\"name\": \"👾 Ticking Entities\", \"value\": \"" + totalEntities + "\", \"inline\": true},"
+                    + "    {\"name\": \"📥 Modrinth Page\", \"value\": \"[Download on Modrinth](https://modrinth.com/project/circuitbreaker)\", \"inline\": false}"
+                    + "  ],"
+                    + "  \"footer\": {\"text\": \"CircuitBreaker Sentinel System • ajaretro.dev\"}"
+                    + "}]"
+                    + "}";
+
+                try (java.io.OutputStream os = conn.getOutputStream()) {
+                    byte[] input = json.getBytes("utf-8");
+                    os.write(input, 0, input.length);
+                }
+
+                conn.getResponseCode();
+            } catch (Exception e) {
+                plugin.getLogger().warning("Failed to send Discord TPS Alert: " + e.getMessage());
+            }
+        });
     }
 }

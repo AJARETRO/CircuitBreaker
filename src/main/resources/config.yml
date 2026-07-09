@@ -90,4 +90,21 @@ discord-webhook:
   # Paste your Discord Channel Webhook Integration URL below.
   url: ""
 
+# ------------------------------
+# Server TPS Sentinel (v2.3)
+# ------------------------------
+tps-sentinel:
+  # Set to true to broadcast performance alerts when TPS drops.
+  enabled: true
+  
+  # The TPS threshold below which the sentinel will trigger alerts.
+  threshold: 18.0
+  
+  # The MSPT threshold above which the sentinel will trigger alerts.
+  mspt-threshold: 48.0
+  
+  # Send the performance report to the Discord Webhook too?
+  send-to-webhook: true
+
+
 

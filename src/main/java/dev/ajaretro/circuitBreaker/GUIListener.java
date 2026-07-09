@@ -96,8 +96,23 @@ public final class GUIListener implements Listener {
             ChunkKey key = frozen.get(i);
             World world = Bukkit.getWorld(key.getWorldUid());
             String worldName = world != null ? world.getName() : "unknown";
+            
+            long unfreezeTime = manager.getFrozenChunksMap().getOrDefault(key, -1L);
+            String remaining = "Never (Permanent)";
+            if (unfreezeTime != -1L) {
+                long diff = unfreezeTime - System.currentTimeMillis();
+                if (diff > 0) {
+                    long sec = (diff / 1000) % 60;
+                    long min = (diff / 1000) / 60;
+                    remaining = min + "m " + sec + "s";
+                } else {
+                    remaining = "0m 0s (Pending unfreeze)";
+                }
+            }
+
             inv.setItem(i, createGuiItem(Material.RED_WOOL, ChatColor.RED + "Frozen: " + worldName + " [" + key.getX() + ", " + key.getZ() + "]",
                 ChatColor.GRAY + "Coordinates: " + (key.getX() << 4) + ", " + (key.getZ() << 4),
+                ChatColor.GRAY + "Unfreezing in: " + ChatColor.YELLOW + remaining,
                 " ",
                 ChatColor.GREEN + "Left-Click: Teleport to Chunk",
                 ChatColor.RED + "Right-Click: Unfreeze Chunk"
