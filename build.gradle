@@ -2,10 +2,11 @@ plugins {
     id 'java'
     id("xyz.jpenilla.run-paper") version "2.3.1"
     id("com.gradleup.shadow") version "8.3.0"
+    id("io.papermc.hangar-publish-plugin") version "0.1.4"
 }
 
 group = 'dev.ajaretro'
-version = '2.1'
+version = '2.1.1'
 
 repositories {
     mavenCentral()
@@ -65,3 +66,26 @@ jar {
     enabled = false
 }
 build.dependsOn(shadowJar)
+
+hangarPublish {
+    publications {
+        register("plugin") {
+            id.set("CircuitBreaker")
+            apiKey.set("38df77b6-f7be-4aab-bb9b-1afbf620ce5b.16fc2981-9c0f-4dc6-b66d-653343378984")
+            version.set(project.version)
+            channel.set("Release")
+            changelog.set("""Optimization & Update Checker Release v2.1.1
+
+- Optimized Physics Checks: Replaced expensive Bukkit event.getBlock().getChunk() calls inside LagListener with fast bit-shifted coordinates.
+- Memory Leak Prevention: Decoupled chunk tracking maps from strong org.bukkit.Chunk references using a custom ChunkKey class, allowing unloaded chunks to be GC'd.
+- Load-Spreading Scanner: The entity culler now spreads its chunk scanning workload across ticks (processing batches of 50 per tick) to eliminate main-thread TPS micro-stuttering.
+- Update Checker: Integrated an asynchronous update checker checking GitHub releases.""")
+            platforms {
+                paper {
+                    jar.set(tasks.shadowJar.archiveFile)
+                    platformVersions.set(List.of("1.21", "1.21.1"))
+                }
+            }
+        }
+    }
+}
