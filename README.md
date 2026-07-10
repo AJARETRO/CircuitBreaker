@@ -1,4 +1,4 @@
-# ⚙️ CircuitBreaker v2.4 | The Ultimate Performance Sentinel
+# ⚙️ CircuitBreaker v2.4 Aegis | The Ultimate Performance Sentinel
 
 ![CircuitBreaker Banner](https://github.com/AJARETRO/CircuitBreaker/raw/master/banner.png)
 
@@ -28,7 +28,8 @@ This plugin ensures your server maintains high **TPS** by surgically neutralizin
 
 ## ✨ What's New?
 
-### 📢 v2.4: Announcement Alert Update
+### 📢 v2.4 Aegis: Announcement Alert Update
+* **AEGIS Acronym:** **Async Event Gate and Isolation Sentinel**
 * **Chunk Frozen Chat Announcement:** All players inside a frozen chunk area receive a warning message letting them know the chunk has been isolated, labeled with author attributions.
 * **Configurable Warning Message:** Define a custom warning message using `chunk-frozen-message` in `config.yml`.
 * **All Rights Reserved License:** Transitioned under a custom All Rights Reserved Software License Agreement.
@@ -101,13 +102,13 @@ You have 100% control. All administrative actions (like ignoring chunks) are **s
 
 ---
 
-## 🔧 Full Configuration (`config.yml` v2.4)
+## 🔧 Full Configuration (`config.yml` v2.4-Aegis)
 
 Tune the plugin to perfectly match your server's needs.
 
 ```yaml
 # ------------------------------
-# CircuitBreaker Config v2.4
+# CircuitBreaker Config v2.4-Aegis
 # ------------------------------
 
 # --- v1.0: Physics Lag Detector ---
