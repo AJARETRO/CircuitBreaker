@@ -50,6 +50,7 @@ public class LagManager {
     private long freezeDuration;
     private boolean notifyAdmins;
     private int strikeResetMinutes;
+    private String chunkFrozenMessage;
 
     // Entity culler parameters
     private boolean entityCullingEnabled;
@@ -77,6 +78,7 @@ public class LagManager {
         this.freezeDuration = config.getLong("freeze-duration-ticks", 6000L);
         this.notifyAdmins = config.getBoolean("notify-admins", true);
         this.strikeResetMinutes = config.getInt("strike-reset-minutes", 15);
+        this.chunkFrozenMessage = ChatColor.translateAlternateColorCodes('&', config.getString("chunk-frozen-message", "&cThis chunk has been frozen due to excessive lag detection!"));
 
         // Load entity culler parameters
         this.entityCullingEnabled = config.getBoolean("entity-culling.enabled", false);
@@ -325,6 +327,18 @@ public class LagManager {
             }
         }
         
+        // Notify players inside the frozen chunks
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (player.getWorld().getUID().equals(worldUid)) {
+                int px = player.getLocation().getBlockX() >> 4;
+                int pz = player.getLocation().getBlockZ() >> 4;
+                if (px >= cx - 1 && px <= cx + 1 && pz >= cz - 1 && pz <= cz + 1) {
+                    player.sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + chunkFrozenMessage);
+                    player.sendMessage(ChatColor.DARK_RED + "[CircuitBreaker] " + ChatColor.GRAY + "by " + ChatColor.RED + "AJA RETRO" + ChatColor.GRAY + " (ajaretro.dev)");
+                }
+            }
+        }
+
         this.lagMachinesStopped++;
         saveIgnoredChunks();
     }
@@ -556,6 +570,7 @@ public class LagManager {
         this.freezeDuration = config.getLong("freeze-duration-ticks", 6000L);
         this.notifyAdmins = config.getBoolean("notify-admins", true);
         this.strikeResetMinutes = config.getInt("strike-reset-minutes", 15);
+        this.chunkFrozenMessage = ChatColor.translateAlternateColorCodes('&', config.getString("chunk-frozen-message", "&cThis chunk has been frozen due to excessive lag detection!"));
 
         this.entityCullingEnabled = config.getBoolean("entity-culling.enabled", false);
         this.entityThreshold = config.getInt("entity-culling.threshold", 500);

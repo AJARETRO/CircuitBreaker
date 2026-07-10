@@ -1,4 +1,4 @@
-# ⚙️ CircuitBreaker v2.3 | The Ultimate Performance Sentinel
+# ⚙️ CircuitBreaker v2.4 | The Ultimate Performance Sentinel
 
 ![CircuitBreaker Banner](https://github.com/AJARETRO/CircuitBreaker/raw/master/banner.png)
 
@@ -27,6 +27,11 @@ This plugin ensures your server maintains high **TPS** by surgically neutralizin
 ---
 
 ## ✨ What's New?
+
+### 📢 v2.4: Announcement Alert Update
+* **Chunk Frozen Chat Announcement:** All players inside a frozen chunk area receive a warning message letting them know the chunk has been isolated, labeled with author attributions.
+* **Configurable Warning Message:** Define a custom warning message using `chunk-frozen-message` in `config.yml`.
+* **All Rights Reserved License:** Transitioned under a custom All Rights Reserved Software License Agreement.
 
 ### ⚙️ v2.3: The Control Panel & Webhook Update
 * **In-Game GUI Control Panel (`/cb gui`):** Opens a fully interactive chest-menu dashboard to view server health, list/teleport/unfreeze frozen chunks, and manage whitelists visually.
@@ -96,13 +101,13 @@ You have 100% control. All administrative actions (like ignoring chunks) are **s
 
 ---
 
-## 🔧 Full Configuration (`config.yml` v2.3)
+## 🔧 Full Configuration (`config.yml` v2.4)
 
 Tune the plugin to perfectly match your server's needs.
 
 ```yaml
 # ------------------------------
-# CircuitBreaker Config v2.3
+# CircuitBreaker Config v2.4
 # ------------------------------
 
 # --- v1.0: Physics Lag Detector ---
@@ -130,6 +135,9 @@ freeze-duration-ticks: 6000
 
 # Send a broadcast message to admins when a chunk is frozen OR culled?
 notify-admins: true
+
+# Message sent directly to players inside a chunk when it is frozen.
+chunk-frozen-message: "&cThis chunk has been frozen due to excessive lag detection!"
 
 # ------------------------------
 # v2.0: Entity Culling Settings

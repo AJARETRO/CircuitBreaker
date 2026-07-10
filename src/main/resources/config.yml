@@ -35,9 +35,10 @@ freeze-duration-ticks: 6000
 # --- Alert Settings ---
 # Send a broadcast message to all players with the 'antilag.notify'
 # permission when a chunk is frozen?
-
-
 notify-admins: true
+
+# Message sent directly to players inside a chunk when it is frozen.
+chunk-frozen-message: "&cThis chunk has been frozen due to excessive lag detection!"
 
 # ------------------------------
 # Entity Culling Settings (v2.0)
