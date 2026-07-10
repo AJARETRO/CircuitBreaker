@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'dev.ajaretro'
-version = '2.4-Aegis'
+version = '2.5-Vanguard'
 
 repositories {
     mavenCentral()
