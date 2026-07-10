@@ -66,6 +66,16 @@ public final class CircuitBreaker extends JavaPlugin {
         // Check for updates asynchronously
         new UpdateChecker(this).checkForUpdates();
 
+        // Check for DeMalware-RETRO active agent
+        if (System.getProperty("demalware.agent.active") == null) {
+            Bukkit.getConsoleSender().sendMessage(ChatColor.DARK_RED + "==================================================");
+            Bukkit.getConsoleSender().sendMessage(ChatColor.RED + "[CircuitBreaker] [SECURITY] WARNING: DeMalware-RETRO is not installed or early-boot protection is inactive!");
+            Bukkit.getConsoleSender().sendMessage(ChatColor.RED + "[CircuitBreaker] [SECURITY] Please install it to protect your server from malicious plugins and backdoors.");
+            Bukkit.getConsoleSender().sendMessage(ChatColor.RED + "[CircuitBreaker] [SECURITY] Modrinth: https://modrinth.com/mod/demalware-retro");
+            Bukkit.getConsoleSender().sendMessage(ChatColor.RED + "[CircuitBreaker] [SECURITY] GitHub: https://github.com/AJARETRO/DeMalware-RETRO");
+            Bukkit.getConsoleSender().sendMessage(ChatColor.DARK_RED + "==================================================");
+        }
+
         Bukkit.getConsoleSender().sendMessage(prefix + ChatColor.GREEN + "Successfully enabled!");
         Bukkit.getConsoleSender().sendMessage(ChatColor.DARK_RED + "==================================================");
     }
