@@ -1,161 +1,103 @@
-# ⚙️ CircuitBreaker v2.4 Aegis | The Ultimate Performance Sentinel
+# CircuitBreaker v2.4-Aegis
 
-![CircuitBreaker Banner](https://github.com/AJARETRO/CircuitBreaker/raw/master/banner.png)
+A chunk-based performance sentinel for Minecraft servers.
 
-[![Official Website](https://img.shields.io/badge/Official-Website-red?style=for-the-badge&logo=googlechrome)](https://ajaretro.dev/circuitbreaker.html)
-[![Modrinth Download](https://img.shields.io/badge/Modrinth-Download-00AD5C?style=for-the-badge&logo=modrinth)](https://modrinth.com/project/circuitbreaker)
-[![Hangar Download](https://img.shields.io/badge/Hangar-Download-007acc?style=for-the-badge&logo=papermc)](https://hangar.papermc.io/AJA_RETRO/CircuitBreaker)
-[![GitHub Releases](https://img.shields.io/badge/GitHub-Releases-222222?style=for-the-badge&logo=github)](https://github.com/AJARETRO/CircuitBreaker/releases)
-
-## 📊 Live Statistics
-[![bStats](https://bstats.org/signatures/bukkit/CircuitBreaker.svg)](https://bstats.org/plugin/bukkit/CircuitBreaker/32242)
-
-**CircuitBreaker** is a powerful, high-performance anti-lag plugin for modern Minecraft (Paper 1.21+). It moves beyond basic entity killing by providing a **multi-system, automated response** to physics lag, entity build-ups, and packet exploits.
-
-This plugin ensures your server maintains high **TPS** by surgically neutralizing lag sources without punishing legitimate players.
+[Official Website](https://ajaretro.dev/circuitbreaker.html) | [Modrinth Project](https://modrinth.com/project/circuitbreaker) | [Hangar Project](https://hangar.papermc.io/AJA_RETRO/CircuitBreaker) | [GitHub Releases](https://github.com/AJARETRO/CircuitBreaker/releases)
 
 ---
 
-## 🎯 Core Philosophy
-
-* **Surgical:** Targets the *exact* chunk causing lag, leaving all other chunks unaffected.
-* **Intelligent:** Uses a "tiered response" to differentiate between a temporary spike and a malicious, persistent machine.
-* **Non-Destructive (Physics):** The physics lag system *never* breaks blocks or destroys player property; it only pauses the laggy process.
-* **Smart Culling (Entities):** The *optional* entity lag system intelligently removes excess entities while protecting important ones (pets, named mobs, villagers, etc.).
-* **Dynamic Scaling:** Automatically adapts its detection thresholds to match the server's live performance.
+CircuitBreaker is an anti-lag plugin for modern Minecraft (Paper 1.21+). Instead of running crude global cleanups that clear all entities, it targets the specific chunk causing physics load, entity build-ups, or packet exploits, letting you isolate lag machines without disrupting legitimate players.
 
 ---
 
-## ✨ What's New?
+## Core Features
 
-### 📢 v2.4 Aegis: Announcement Alert Update
-* **AEGIS Acronym:** **Async Event Gate and Isolation Sentinel**
-* **Chunk Frozen Chat Announcement:** All players inside a frozen chunk area receive a warning message letting them know the chunk has been isolated, labeled with author attributions.
-* **Configurable Warning Message:** Define a custom warning message using `chunk-frozen-message` in `config.yml`.
-* **All Rights Reserved License:** Transitioned under a custom All Rights Reserved Software License Agreement.
-
-### ⚙️ v2.3: The Control Panel & Webhook Update
-* **In-Game GUI Control Panel (`/cb gui`):** Opens a fully interactive chest-menu dashboard to view server health, list/teleport/unfreeze frozen chunks, and manage whitelists visually.
-* **Discord Webhook Alerts:** Sends rich, stylized Discord embeds notifying you when a lag source has been detected and neutralized (includes /tp command, stats, world info).
-* **Server TPS Sentinel:** Background task monitors general performance and logs detailed lag reports (entities, loaded chunks, TPS/MSPT) to in-game chat and Discord.
-* **Countdown Unfreeze Timers:** Displays real-time auto-unfreeze timers dynamically inside the GUI panel.
-* **Auto-Updater:** Automatically downloads new plugin releases directly into the server's update folder for seamless, crash-free restarts.
-* **Configuration Reloading (`/cb reload`):** Apply any configuration adjustments (including webhook URLs and alert options) instantly without server restarts.
-
-### 🛡️ v2.2: Advanced Sentinel Release
-* **Dynamic Threshold Scaling:** Automatically adjusts physics event thresholds based on live TPS and MSPT load averages (stricter under load, lenient when healthy).
-* **3x3 Chunk Freezing:** When a chunk triggers Strike 3 (Hard Freeze), a 3x3 grid centered around that chunk is frozen to catch machines spanning chunk borders.
-* **Clickable Chat Alerts:** Broadcasts interactive admin alerts with built-in `[TP]`, `[UNFREEZE]`, and `[IGNORE]` click actions.
-* **Improved `/cb unfreeze` Command:** Supports optional radius (e.g. `/cb unfreeze 3`) and falls back to a 10x10 block area unfreeze if omitted.
-* **`/cb top` Subcommand:** Real-time diagnostics command showing top 5 chunks with highest block physics activity.
-* **Packet Spam Sentinel:** Dynamically injects into player Netty connection pipeline to throttle packet-spam crash exploit clients.
+* **Chunk Isolation:** Actions are applied only to the chunk causing the issue. All other chunks remain unaffected.
+* **Tiered Response:** Uses a multi-strike system to differentiate between temporary resource spikes and malicious lag machines.
+* **Non-Destructive Physics Controls:** Does not break blocks or delete player builds. It temporarily pauses physics updates in the affected area.
+* **Smart Entity Culling:** An optional module that removes excess entities above a threshold while automatically protecting named mobs, tamed animals, and vehicles.
+* **Adaptive Scaling:** Adjusts detection thresholds dynamically depending on live TPS and MSPT metrics.
 
 ---
 
-## 💡 System 1: Physics Lag (The 3-Strike System)
+## What's New in v2.4-Aegis
 
-This is the core of the plugin. It *only* detects **Block Physics Lag**.
+* **AEGIS (Async Event Gate and Isolation Sentinel) System:** Implemented player notifications. When a chunk is frozen, all players inside the 3x3 frozen perimeter receive a chat warning.
+* **Configurable Alert Message:** Added `chunk-frozen-message` to `config.yml` to customize the warning format.
+* **Proprietary License:** Updated the project under a custom All Rights Reserved Software License Agreement.
 
-1. **Detection:** The plugin counts every `BlockPhysicsEvent` (from pistons, redstone, water, etc.) per chunk, every second.
-2. **Strike 1 & 2 (Soft Reset):** If a chunk exceeds the `lag-threshold`, it performs a "Soft Reset"—unloading and reloading the chunk to break simple loops.
-3. **Strike 3 (Hard Freeze):** If the lag persists, the plugin performs a "Hard Freeze," adding the 3x3 grid of chunks centered on the source to a "jail" and **canceling all future physics events** from them.
-4. **The "Forgiveness" Timer:** A global timer (`strike-reset-minutes`) clears all strikes every 15 minutes to ensure fairness.
-
----
-
-## 💡 System 2: Entity Lag (The Culler)
-
-This is the **optional** system. It must be enabled in `config.yml`.
-
-1. **Detection:** A separate, slower ticker (`scan-interval-seconds`) runs to check the total number of entities in each loaded chunk.
-2. **Threshold Check:** If `chunk.getEntities().length` is greater than the `entity-culling.threshold` (e.g., 500), it triggers a cull.
-3. **Smart Culling:** The plugin loops through all entities in that chunk and **removes** them *unless* they are "important."
-
-### What is an "Important" Entity? (Will NOT be culled)
-* Anything on the `entity-culling.whitelist` in the config (e.g., "PLAYER", "VILLAGER", "IRON_GOLEM").
-* Any entity with a **custom name**.
-* Any **tamed pet** (dogs, cats, parrots).
-* Any **vehicle** (boats, minecarts).
+### Previous Updates (v2.3)
+* **GUI Dashboard:** Open a visual overview via `/cb gui` to monitor active frozen chunks, check server health, and manage whitelists visually.
+* **Discord Integration:** Sends rich webhook alerts containing chunk coordinates, defused event counts, and quick actions when lag machines are isolated.
+* **TPS Sentinel:** Background tasks log detailed performance reports (loaded chunks, entity counts, TPS/MSPT) to console, in-game chat, or Discord.
 
 ---
 
-## 🛡️ Admin Guide: Commands & Permissions
+## Technical Details
 
-You have 100% control. All administrative actions (like ignoring chunks) are **saved to `data.yml`** and persist through server restarts.
+### 1. Physics Lag (The 3-Strike System)
+This module targets Block Physics Lag (pistons, redstone loops, fluid updates).
+1. **Counting:** Tracks the number of `BlockPhysicsEvent` occurrences per chunk per second.
+2. **Soft Reset (Strikes 1 & 2):** If a chunk exceeds the configured `lag-threshold`, it is temporarily unloaded and reloaded to break simple clock loops.
+3. **Hard Freeze (Strike 3):** If the loop persists, the chunk and its 3x3 neighbors are put in a frozen state, canceling physics events in those chunks.
+4. **Resets:** A background timer clears strike lists periodically based on `strike-reset-minutes`.
 
-### 🔑 Permissions
-| Permission | Description | Default |
-| :--- | :--- | :--- |
-| `circuitbreaker.admin` | Grants access to all `/cb` commands. | `op` |
-| `antilag.notify` | Receives alerts when a chunk is frozen, culled, or TPS falls. | `op` |
+### 2. Smart Entity Culling (Optional)
+Must be enabled in `config.yml`.
+1. **Scanning:** A background task checks entity counts per loaded chunk at defined intervals.
+2. **Culling:** If total entities in a chunk exceed `entity-culling.threshold`, excess entities are removed.
+3. **Exceptions:** The culler preserves players, whitelisted types, custom-named entities, tamed pets, and vehicles (boats/minecarts).
 
-### 📟 Commands
+---
+
+## Admin Commands & Permissions
+
+Settings and ignores are saved to `data.yml` and persist across restarts.
+
+### Permissions
+* `circuitbreaker.admin`: Allows executing `/cb` commands (Default: op).
+* `antilag.notify`: Allows receiving warning alerts (Default: op).
+
+### Commands
 | Command | Alias | Description |
 | :--- | :--- | :--- |
-| `/cb gui` | `/cb panel` | Opens the visual chest-menu control panel dashboard. |
-| `/cb status` | `/cb status` | Checks the status of your current chunk (`NORMAL`, `WATCHED`, `FROZEN`, `IGNORED`). |
-| `/cb unfreeze [radius]` | `/cb unfreeze` | Unfreezes chunks within a radius (default: 10x10 block area around position). |
-| `/cb top` | `/cb top` | Shows the top 5 chunks with highest block physics activity in the last second. |
-| `/cb ignore` | `/cb ignore` | Whitelists your current chunk. It will be ignored by both the physics lag and entity culling systems. |
-| `/cb unignore` | `/cb unignore` | Removes your current chunk from the permanent ignore list. |
-| `/cb reload` | `/cb reload` | Instantly reloads the configuration from config.yml. |
+| `/cb gui` | `/cb panel` | Opens the visual chest-menu control panel. |
+| `/cb status` | `/cb status` | Checks state of current chunk (`NORMAL`, `WATCHED`, `FROZEN`, `IGNORED`). |
+| `/cb unfreeze [radius]` | `/cb unfreeze` | Unfreezes chunks within a radius (defaults to 10x10 block area). |
+| `/cb top` | `/cb top` | Lists the top 5 chunks with highest block physics activity. |
+| `/cb ignore` | `/cb ignore` | Adds current chunk to whitelist (ignores physics resets and culling). |
+| `/cb unignore` | `/cb unignore` | Removes current chunk from the whitelist. |
+| `/cb reload` | `/cb reload` | Reloads configuration settings. |
 
 ---
 
-## 🔧 Full Configuration (`config.yml` v2.4-Aegis)
-
-Tune the plugin to perfectly match your server's needs.
+## Configuration Reference (`config.yml`)
 
 ```yaml
-# ------------------------------
-# CircuitBreaker Config v2.4-Aegis
-# ------------------------------
+# CircuitBreaker Configuration File
+# Upgraded: v2.4-Aegis
 
-# --- v1.0: Physics Lag Detector ---
-# Set to false to disable the 3-strike physics lag system.
+# Toggle physics lag checks
 enabled: true
 
-# How many block physics events in 1 second (20 ticks)
-# will trigger a "lag" warning?
+# Physics threshold settings
 lag-threshold: 20000
-
-# How many "strikes" a chunk gets before it is frozen.
 strike-limit: 3
-
-# How many minutes of no lag before a chunk's strike count is reset.
 strike-reset-minutes: 15
 
-# How long (in ticks) to "soft reset" a chunk for.
-# 200 ticks = 10 seconds
+# Action Durations (Ticks)
 soft-reset-duration-ticks: 200
-
-# How long (in ticks) to "hard freeze" a chunk for.
-# 6000 ticks = 5 minutes
-# Set to -1 to freeze chunks permanently (requires admin /cb unfreeze).
 freeze-duration-ticks: 6000
 
-# Send a broadcast message to admins when a chunk is frozen OR culled?
+# Alerts
 notify-admins: true
-
-# Message sent directly to players inside a chunk when it is frozen.
 chunk-frozen-message: "&cThis chunk has been frozen due to excessive lag detection!"
 
-# ------------------------------
-# v2.0: Entity Culling Settings
-# ------------------------------
+# Entity Culling (Optional)
 entity-culling:
-  # Set to true to enable this entity-culling feature.
-  # This is disabled by default.
   enabled: false
-
-  # How often (in seconds) to scan all loaded chunks.
-  # This is a HEAVY task. Do not set this too low!
   scan-interval-seconds: 15
-
-  # How many entities must be in a *single chunk* to trigger a cull.
   threshold: 500
-
-  # A list of entity types to *NEVER* kill (case-insensitive).
   whitelist:
     - "PLAYER"
     - "VILLAGER"
@@ -164,51 +106,30 @@ entity-culling:
     - "ITEM_FRAME"
     - "PAINTING"
 
-# ------------------------------
-# v2.2: Packet Sentinel Settings
-# ------------------------------
+# Network Sentinel
 packet-sentinel:
-  # Set to true to enable packet spam detection and throttle crash exploit clients.
   enabled: true
-  
-  # How many packets a player is allowed to send per second.
   threshold-per-second: 600
 
-# ------------------------------
-# Auto-Updater Settings (v2.2)
-# ------------------------------
+# Updates
 auto-update:
-  # Set to true to automatically download new versions when available.
-  # If false, it will only notify you in the console.
   enabled: true
 
-# ------------------------------
-# Discord Webhook Alerts (v2.2)
-# ------------------------------
+# Discord Integration
 discord-webhook:
-  # Set to true to broadcast sentinel alerts to your Discord channel.
   enabled: false
-  
-  # Paste your Discord Channel Webhook Integration URL below.
   url: ""
 
-# ------------------------------
-# Server TPS Sentinel (v2.3)
-# ------------------------------
+# TPS Monitor Sentinel
 tps-sentinel:
-  # Set to true to broadcast performance alerts when TPS drops.
   enabled: true
-  
-  # The TPS threshold below which the sentinel will trigger alerts.
   threshold: 18.0
-  
-  # The MSPT threshold above which the sentinel will trigger alerts.
   mspt-threshold: 48.0
-  
-  # Send the performance report to the Discord Webhook too?
   send-to-webhook: true
 ```
 
-### 🔗 Compatibility
-* **Requires:** Paper 1.21+ (or forks like Purpur, Pufferfish).
-* **Folia:** This plugin is **NOT** compatible with Folia. It includes a safety check and will disable itself if Folia is detected, logging a clear message to your console.
+---
+
+## Requirements & Compatibility
+* **Server Version:** Paper 1.21+ (including Purpur, Pufferfish).
+* **Folia:** Not supported. The plugin will automatically disable itself on Folia platforms to prevent scheduling conflicts.

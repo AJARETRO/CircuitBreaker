@@ -39,11 +39,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 ---
 
-## 💎 Support the Project & Enterprise Tiers
+## Support and Enterprise Tiers
 
-If you love CircuitBreaker and want to support its active development, or if you run a commercial network that requires dedicated enterprise backing, consider supporting the project on [our Donation Page](https://ajaretro.dev/donate.html)!
+If you would like to support the development of CircuitBreaker, or if you run a commercial server network requiring dedicated enterprise backing, support details are listed on the [donation page](https://ajaretro.dev/donate.html).
 
-### 🛠️ Tiers & Benefits
+### Tiers and Benefits
 
 * **Priority Support | $5/month**  
   Receive direct, prioritized technical support for any deployment issues, configuration hurdles, or debugging needs across your network nodes.
