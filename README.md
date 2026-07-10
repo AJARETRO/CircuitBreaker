@@ -1,4 +1,4 @@
-# CircuitBreaker v2.4-Aegis
+# CircuitBreaker v2.5-Vanguard
 
 A chunk-based performance sentinel for Minecraft servers.
 
@@ -20,16 +20,12 @@ CircuitBreaker is an anti-lag plugin for modern Minecraft (Paper 1.21+). Instead
 
 ---
 
-## What's New in v2.4-Aegis
+## What's New in v2.5-Vanguard
 
-* **AEGIS (Async Event Gate and Isolation Sentinel) System:** Implemented player notifications. When a chunk is frozen, all players inside the 3x3 frozen perimeter receive a chat warning.
+* **Security Integration:** Added early-boot system checking. Checks if the `DeMalware-RETRO` JVM agent is loaded on server startup, alerting the console if protection is missing.
+* **AEGIS System Alert notifications:** When a chunk is frozen, all players inside the 3x3 frozen perimeter receive a chat warning.
 * **Configurable Alert Message:** Added `chunk-frozen-message` to `config.yml` to customize the warning format.
 * **Proprietary License:** Updated the project under a custom All Rights Reserved Software License Agreement.
-
-### Previous Updates (v2.3)
-* **GUI Dashboard:** Open a visual overview via `/cb gui` to monitor active frozen chunks, check server health, and manage whitelists visually.
-* **Discord Integration:** Sends rich webhook alerts containing chunk coordinates, defused event counts, and quick actions when lag machines are isolated.
-* **TPS Sentinel:** Background tasks log detailed performance reports (loaded chunks, entity counts, TPS/MSPT) to console, in-game chat, or Discord.
 
 ---
 
@@ -75,7 +71,7 @@ Settings and ignores are saved to `data.yml` and persist across restarts.
 
 ```yaml
 # CircuitBreaker Configuration File
-# Upgraded: v2.4-Aegis
+# Upgraded: v2.5-Vanguard
 
 # Toggle physics lag checks
 enabled: true
@@ -133,3 +129,12 @@ tps-sentinel:
 ## Requirements & Compatibility
 * **Server Version:** Paper 1.21+ (including Purpur, Pufferfish).
 * **Folia:** Not supported. The plugin will automatically disable itself on Folia platforms to prevent scheduling conflicts.
+
+---
+
+## 📦 AJA RETRO Plugin Suite
+*   [DeMalware-RETRO](https://modrinth.com/mod/demalware-retro) - Advanced JVM agent early-boot malware protection scanner.
+*   [CircuitBreaker](https://modrinth.com/mod/circuitbreaker) - Dynamic lag machine culler and entity optimizer.
+*   [FoliaCore](https://modrinth.com/mod/folia-core) - Multi-threaded native essentials suite built for Folia.
+*   [RetroWorldPurger](https://modrinth.com/plugin/retroworldpurger) - Automatic region file purger and storage optimizer.
+*   [RetroMail](https://modrinth.com/plugin/retromail) - High-performance SMTP server integration for mail delivery.
