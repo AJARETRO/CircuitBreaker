@@ -138,3 +138,11 @@ tps-sentinel:
 *   [FoliaCore](https://modrinth.com/mod/folia-core) - Multi-threaded native essentials suite built for Folia.
 *   [RetroWorldPurger](https://modrinth.com/plugin/retroworldpurger) - Automatic region file purger and storage optimizer.
 *   [RetroMail](https://modrinth.com/plugin/retromail) - High-performance SMTP server integration for mail delivery.
+
+---
+
+## 💬 Contact & Custom Quotes
+
+Need direct support or looking to quote a custom plugin? We design and build everything from **lightweight server utility plugins** up to **high-concurrency enterprise-grade server systems**:
+*   🟢 **WhatsApp:** [+880 1989-208751](https://wa.me/8801989208751)
+*   ✉️ **Quotes & Support:** Get in touch directly on WhatsApp for dedicated support, licensing, or custom software inquiries.
